@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
@@ -54,7 +54,7 @@ async def create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get_db)
     return db_ticket
 
 @router.patch("/{ticket_id}", response_model=TicketOut)
-async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, db: AsyncSession = Depends(get_db)):
+async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     stmt = select(Ticket).where(Ticket.id == ticket_id)
     result = await db.execute(stmt)
     db_ticket = result.scalar_one_or_none()
@@ -72,6 +72,17 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, db: AsyncSe
             # Update Reliability
             if db_ticket.assignee: # Can only update if assigned
                 await update_reliability(db_ticket.assignee, db_ticket)
+
+    # Check for status change to CODE_REVIEW
+    if "status" in update_data and update_data["status"] == TicketStatus.CODE_REVIEW:
+        from .ai_chat import trigger_proactive_message
+        username = db_ticket.assignee.username if db_ticket.assignee else "Teammate"
+        background_tasks.add_task(
+            trigger_proactive_message,
+            "code-review",
+            f"User {username} just moved ticket '{db_ticket.title}' to Code Review. Offer to review their PR.",
+            username
+        )
     
     for key, value in update_data.items():
         setattr(db_ticket, key, value)

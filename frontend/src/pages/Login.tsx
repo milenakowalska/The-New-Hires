@@ -1,12 +1,14 @@
 import { Github } from 'lucide-react';
 import api from '../api/client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const code = searchParams.get('code');
+
+  const hasCalled = useRef(false);
 
   useEffect(() => {
     const handleCallback = async (authCode: string) => {
@@ -23,6 +25,7 @@ export default function Login() {
     };
 
     if (code) {
+      hasCalled.current = true;
       handleCallback(code);
     }
   }, [code, navigate]);

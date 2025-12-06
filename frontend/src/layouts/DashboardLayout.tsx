@@ -1,8 +1,34 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 
+import { useState, useEffect } from 'react';
+import socket from '../api/socket';
+
 export default function DashboardLayout() {
     const location = useLocation();
     const isActive = (path: string) => location.pathname === path;
+    const [hasUnread, setHasUnread] = useState(false);
+
+    useEffect(() => {
+        const onNewMessage = (msg: any) => {
+            // Only show dot if we are NOT on the messages page
+            if (!location.pathname.startsWith('/messages')) {
+                setHasUnread(true);
+            }
+        };
+
+        socket.on('new_message', onNewMessage);
+
+        return () => {
+            socket.off('new_message', onNewMessage);
+        };
+    }, [location.pathname]);
+
+    // Clear unread if we navigate to messages
+    useEffect(() => {
+        if (location.pathname.startsWith('/messages')) {
+            setHasUnread(false);
+        }
+    }, [location.pathname]);
 
     const navItems = [
         { path: '/', label: 'Overview' },
@@ -44,6 +70,9 @@ export default function DashboardLayout() {
                                         }`}
                                 >
                                     {item.label}
+                                    {item.label === 'Messages' && hasUnread && (
+                                        <span className="ml-2 w-2 h-2 bg-red-500 rounded-full inline-block"></span>
+                                    )}
                                 </Link>
                             ))}
 

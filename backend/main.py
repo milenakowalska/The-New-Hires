@@ -6,7 +6,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api import auth, tickets, messages, onboarding, webhooks, ai, features, activity
+from api import auth, tickets, messages, onboarding, webhooks, ai, features, activity, gamification
 import socketio
 import os
 
@@ -40,7 +40,6 @@ app.include_router(webhooks.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(features.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
-from api import gamification
 app.include_router(gamification.router, prefix="/api")
 
 # We need to expose app_sio for Uvicorn to run if we want SIO to work on root

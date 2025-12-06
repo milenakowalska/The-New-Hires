@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from .ai_chat import trigger_proactive_message
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from database import get_db
@@ -28,7 +29,7 @@ async def github_login():
     }
 
 @router.get("/github/callback")
-async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
+async def github_callback(code: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     try:
         print(f"Debug: Received code {code}")
         print(f"Debug: Client ID {GITHUB_CLIENT_ID}")
@@ -135,6 +136,14 @@ _Remember: Your performance is being tracked from day one. Make it count!_ 💪"
                     "sender_name": "Sarah (HR AI)",
                     "sender_avatar": None
                 })
+            
+            # Trigger random weekend message
+            background_tasks.add_task(
+                trigger_proactive_message, 
+                "random", 
+                "The user just logged in. Ask them how their weekend was or tell a joke.", 
+                user.username
+            )
             
             # Create JWT
             jwt_token = create_access_token({"sub": user.username, "id": user.id})

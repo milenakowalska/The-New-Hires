@@ -1,7 +1,7 @@
 from models import User, Ticket, TicketStatus, TicketPriority
 import base64
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
@@ -14,10 +14,11 @@ class RepoRequest(BaseModel):
     repo_name: Optional[str] = None  # Auto-generated if not provided
 
 @router.post("/generate-repo")
-async def generate_repository(request: RepoRequest, user_id: int, db: AsyncSession = Depends(get_db)):
+async def generate_repository(request: RepoRequest, user_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """Generate a repository with AI-generated code containing intentional bugs"""
     from sqlalchemy.future import select
     from .ai_utils import generate_project_with_bugs
+    from .ai_chat import trigger_proactive_message
     
     # Fetch user to get token
     stmt = select(User).where(User.id == user_id)
@@ -125,6 +126,13 @@ jobs:
             db.add_all(created_tickets)
             await db.commit()
         
+        background_tasks.add_task(
+            trigger_proactive_message,
+            "dev",
+            f"The user just cloned their first repo: {repo_name}. Offer technical help if they get stuck.",
+            user.username
+        )
+
         return {
             "message": f"Repository created with {len(files)} files and {len(created_tickets)} tickets!",
             "repo_url": repo_url,
