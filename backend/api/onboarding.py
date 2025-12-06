@@ -10,7 +10,6 @@ from database import get_db
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 class RepoRequest(BaseModel):
-    github_token: str # In real flow, we use the stored user token
     repo_name: str = "the-new-hire-simulation"
 
 @router.post("/generate-repo")

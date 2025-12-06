@@ -31,11 +31,21 @@ export default function Onboarding() {
     const generateRepo = async () => {
         setLoading(true);
         try {
-            await api.post('/onboarding/generate-repo', { github_token: 'dummy' });
-            alert("Repository generated! Check your GitHub.");
-        } catch (e) {
+            const userJson = localStorage.getItem('user');
+            if (!userJson) {
+                alert("Please log in first");
+                return;
+            }
+            const user = JSON.parse(userJson);
+
+            const res = await api.post(`/onboarding/generate-repo?user_id=${user.id}`, {
+                repo_name: 'the-new-hire-simulation'
+            });
+            alert(`Repository generated! ${res.data.repo_url}`);
+        } catch (e: any) {
             console.error(e);
-            alert("Failed to generate repo (Are you using a valid token in backend?)");
+            const detail = e.response?.data?.detail || "Failed to generate repo";
+            alert(detail);
         } finally {
             setLoading(false);
         }
