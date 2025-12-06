@@ -4,18 +4,56 @@ import api from '../api/client';
 import { Send, Hash, Users } from 'lucide-react';
 import socket from '../api/socket';
 
+interface Message {
+    id: number;
+    channel: string;
+    content: string;
+    sender_name: string;
+    timestamp: string;
+    is_bot: boolean;
+}
+
 export default function Messages() {
     const { channel = 'general' } = useParams();
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        const fetchMessages = async () => {
+            try {
+                const res = await api.get(`/messages/${channel}`);
+
+                // If this is the general channel and there are no messages, add HR welcome
+                if (channel === 'general' && res.data.length === 0) {
+                    const userJson = localStorage.getItem('user');
+                    if (userJson) {
+                        const user = JSON.parse(userJson);
+                        //  Create HR welcome message
+                        await api.post('/messages', {
+                            channel: 'general',
+                            content: `Welcome to the team, ${user.username}! 🎉\n\nPlease start by completing your onboarding:\n1. Go to the Onboarding page\n2. Generate your repository\n3. Clone it locally\n4. Complete the setup checklist\n\nGood luck on your first week!`,
+                            is_bot: true
+                        });
+                        // Refetch to get the welcome message
+                        const refreshed = await api.get(`/messages/${channel}`);
+                        setMessages(refreshed.data);
+                        return;
+                    }
+                }
+
+                setMessages(res.data);
+            } catch (error) {
+                console.log("Error fetching messages", error);
+            }
+        };
+
         // Fetch initial messages
         fetchMessages();
 
+
         // Socket Listener
-        const onNewMessage = (msg: any) => {
+        const onNewMessage = (msg: Message) => {
             if (msg.channel === channel) {
                 setMessages(prev => [...prev, msg]);
             }
@@ -28,41 +66,15 @@ export default function Messages() {
         };
     }, [channel]);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const fetchMessages = async () => {
-        try {
-            const res = await api.get(`/messages/${channel}`);
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
-            // If this is the general channel and there are no messages, add HR welcome
-            if (channel === 'general' && res.data.length === 0) {
-                const userJson = localStorage.getItem('user');
-                if (userJson) {
-                    const user = JSON.parse(userJson);
-                    //  Create HR welcome message
-                    await api.post('/messages', {
-                        channel: 'general',
-                        content: `Welcome to the team, ${user.username}! 🎉\n\nPlease start by completing your onboarding:\n1. Go to the Onboarding page\n2. Generate your repository\n3. Clone it locally\n4. Complete the setup checklist\n\nGood luck on your first week!`,
-                        is_bot: true
-                    });
-                    // Refetch to get the welcome message
-                    const refreshed = await api.get(`/messages/${channel}`);
-                    setMessages(refreshed.data);
-                    return;
-                }
-            }
 
-            setMessages(res.data);
-        } catch (error) {
-            console.log("Error fetching messages", error);
-        }
-    };
 
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();

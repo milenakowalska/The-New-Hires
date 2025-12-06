@@ -25,7 +25,7 @@ interface ActivityItem {
     id: number;
     type: string;
     description: string;
-    extra_data: Record<string, any>;
+    extra_data: Record<string, unknown>;
     created_at: string;
 }
 
@@ -94,11 +94,11 @@ export default function Overview() {
         };
         fetchStats();
 
-        const onStatsUpdate = (data: any) => {
-            setStats(prev => prev ? { ...prev, ...data } : data);
+        const onStatsUpdate = (data: Partial<UserStats>) => {
+            setStats(prev => prev ? { ...prev, ...data } : data as UserStats);
         };
 
-        const onLevelUp = (data: any) => {
+        const onLevelUp = (data: unknown) => {
             console.log("Level UP!", data);
         };
 

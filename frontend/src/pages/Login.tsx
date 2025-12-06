@@ -9,23 +9,23 @@ export default function Login() {
   const code = searchParams.get('code');
 
   useEffect(() => {
+    const handleCallback = async (authCode: string) => {
+      try {
+        const res = await api.get(`/auth/github/callback?code=${authCode}`);
+        if (res.data.access_token) {
+          localStorage.setItem('token', res.data.access_token);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
+          navigate('/');
+        }
+      } catch (error) {
+        console.error("Login failed", error);
+      }
+    };
+
     if (code) {
       handleCallback(code);
     }
-  }, [code]);
-
-  const handleCallback = async (authCode: string) => {
-    try {
-      const res = await api.get(`/auth/github/callback?code=${authCode}`);
-      if (res.data.access_token) {
-        localStorage.setItem('token', res.data.access_token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-        navigate('/');
-      }
-    } catch (error) {
-      console.error("Login failed", error);
-    }
-  };
+  }, [code, navigate]);
 
   const handleLogin = async () => {
     try {

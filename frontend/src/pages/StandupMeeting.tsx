@@ -6,11 +6,9 @@ export default function StandupMeeting() {
     const [step, setStep] = useState<'waiting' | 'coworker' | 'user' | 'done'>('waiting');
     const [coworker, setCoworker] = useState<{ name: string, role: string, text: string, audio_url: string } | null>(null);
     const [isRecording, setIsRecording] = useState(false);
-    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [transcript, setTranscript] = useState('');
     const [coworkerRound, setCoworkerRound] = useState(0);
     const [audioError, setAudioError] = useState(false);
-    const [audioLoaded, setAudioLoaded] = useState(false);
 
     const audioRef = useRef<HTMLAudioElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -24,6 +22,7 @@ export default function StandupMeeting() {
         try {
             const res = await api.get('/features/standups/daily-update');
             setCoworker(res.data);
+            setAudioError(false);
         } catch (error) {
             console.error("Failed to fetch coworker", error);
         }
@@ -41,8 +40,8 @@ export default function StandupMeeting() {
 
     useEffect(() => {
         if (coworker && audioRef.current) {
-            setAudioError(false);
-            setAudioLoaded(false);
+            // Reset error state when new coworker loads, but avoid direct state update if possible
+            // We can just rely on the key prop or similar if we wanted to force reload
             audioRef.current.play().catch(err => {
                 console.error("Audio play failed:", err);
                 setAudioError(true);
@@ -53,10 +52,6 @@ export default function StandupMeeting() {
     const handleAudioError = () => {
         console.error("Audio failed to load");
         setAudioError(true);
-    };
-
-    const handleAudioLoaded = () => {
-        setAudioLoaded(true);
     };
 
     const skipCoworker = () => {
@@ -72,7 +67,7 @@ export default function StandupMeeting() {
         mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
         mediaRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'audio/webm' });
-            setAudioBlob(blob);
+            // setAudioBlob(blob); // Unused
             uploadStandup(blob);
         };
 
@@ -146,7 +141,6 @@ export default function StandupMeeting() {
                         src={coworker.audio_url}
                         onEnded={handleCoworkerAudioEnded}
                         onError={handleAudioError}
-                        onCanPlayThrough={handleAudioLoaded}
                         className="hidden"
                     />
                 </div>

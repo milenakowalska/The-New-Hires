@@ -80,3 +80,68 @@ async def upload_retrospective(user_id: int, file: UploadFile = File(...), db: A
     db.add(retro)
     await db.commit()
     return {"url": file_url}
+
+@router.get("/retrospectives/sprint-stats")
+async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
+    """Get sprint stats for the retrospective dashboard"""
+    from models import Ticket, TicketStatus
+    
+    # Get user
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return {"error": "User not found"}
+    
+    # Get tickets assigned to user
+    ticket_stmt = select(Ticket).where(Ticket.assignee_id == user_id)
+    ticket_result = await db.execute(ticket_stmt)
+    tickets = ticket_result.scalars().all()
+    
+    total_tickets = len(tickets)
+    completed_tickets = len([t for t in tickets if t.status == TicketStatus.DONE])
+    in_progress_tickets = len([t for t in tickets if t.status == TicketStatus.IN_PROGRESS])
+    todo_tickets = len([t for t in tickets if t.status == TicketStatus.TODO])
+    
+    # Calculate completion rate
+    completion_rate = round((completed_tickets / total_tickets * 100) if total_tickets > 0 else 0)
+    
+    # Calculate story points
+    total_story_points = sum(t.story_points for t in tickets)
+    completed_story_points = sum(t.story_points for t in tickets if t.status == TicketStatus.DONE)
+    
+    # Get standups count
+    standup_stmt = select(StandupSession).where(StandupSession.user_id == user_id)
+    standup_result = await db.execute(standup_stmt)
+    standups = standup_result.scalars().all()
+    
+    return {
+        "user": {
+            "username": user.username,
+            "avatar_url": user.avatar_url,
+            "level": user.level,
+            "xp": user.xp
+        },
+        "metrics": {
+            "truthfulness": user.truthfulness,
+            "effort": user.effort,
+            "reliability": user.reliability,
+            "collaboration": user.collaboration,
+            "quality": user.quality
+        },
+        "tickets": {
+            "total": total_tickets,
+            "completed": completed_tickets,
+            "in_progress": in_progress_tickets,
+            "todo": todo_tickets,
+            "completion_rate": completion_rate
+        },
+        "story_points": {
+            "total": total_story_points,
+            "completed": completed_story_points
+        },
+        "standups_completed": len(standups),
+        "sprint_days": 7
+    }
+
