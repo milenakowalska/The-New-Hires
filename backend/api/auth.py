@@ -159,6 +159,8 @@ _Remember: Your performance is being tracked from day one. Make it count!_ 💪"
                     "xp": user.xp
                 }
             }
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"CRITICAL ERROR in github_callback: {str(e)}")
         import traceback
