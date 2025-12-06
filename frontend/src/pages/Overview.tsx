@@ -206,12 +206,12 @@ export default function Overview() {
                     </div>
 
                     <ul className="divide-y">
-                        {activities.length === 0 ? (
+                        {activities?.length === 0 ? (
                             <li className="py-6 text-center text-slate-400 text-sm">
                                 No recent activity yet. Start completing tasks!
                             </li>
                         ) : (
-                            activities.map((activity) => (
+                            activities?.map((activity) => (
                                 <li key={activity.id} className="py-3 flex items-start gap-3">
                                     <div className="flex-none w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
                                         {getActivityIcon(activity.type)}

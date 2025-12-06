@@ -33,7 +33,12 @@ export default function Login() {
   const handleLogin = async () => {
     try {
       const res = await api.get('/auth/github/login');
-      window.location.href = res.data.url;
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        console.error("Invalid login response", res.data);
+        alert("Server error: Could not get login URL");
+      }
     } catch (error) {
       console.error("Failed to get auth URL", error);
       alert("Failed to connect to backend. Check console for details.");
