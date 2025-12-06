@@ -1,0 +1,12 @@
+
+--- Error at 2025-12-06 14:22:22.954469 ---
+Traceback (most recent call last):
+  File "/home/weinni2000/The-New-Hires/backend/api/auth.py", line 57, in github_callback
+    raise HTTPException(status_code=400, detail=f"Failed to retrieve access token: {data}")
+fastapi.exceptions.HTTPException: 400: Failed to retrieve access token: {'error': 'bad_verification_code', 'error_description': 'The code passed is incorrect or expired.', 'error_uri': 'https://docs.github.com/apps/managing-oauth-apps/troubleshooting-oauth-app-access-token-request-errors/#bad-verification-code'}
+
+--- Error at 2025-12-06 14:37:28.539929 ---
+Traceback (most recent call last):
+  File "/home/weinni2000/The-New-Hires/backend/api/auth.py", line 58, in github_callback
+    raise HTTPException(status_code=400, detail=f"Failed to retrieve access token: {data}")
+fastapi.exceptions.HTTPException: 400: Failed to retrieve access token: {'error': 'bad_verification_code', 'error_description': 'The code passed is incorrect or expired.', 'error_uri': 'https://docs.github.com/apps/managing-oauth-apps/troubleshooting-oauth-app-access-token-request-errors/#bad-verification-code'}

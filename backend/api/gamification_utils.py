@@ -90,11 +90,19 @@ async def update_reliability(user: User, ticket):
 
     # Compare completion time vs due date
     # In naive datetime comparison, ensure both are timezone aware or both naive.
-    # SQLAlchemy returns aware datetimes if configured, but let's be safe.
     from datetime import datetime
     
     # Check if late
-    if ticket.completed_at > ticket.due_date:
+    completed = ticket.completed_at
+    due = ticket.due_date
+
+    # Make naive datetimes aware if needed (assuming local system time for naive)
+    if completed and completed.tzinfo is None:
+        completed = completed.astimezone()
+    if due and due.tzinfo is None:
+        due = due.astimezone()
+        
+    if completed > due:
         # Penalize
         print(f"Ticket {ticket.id} late. Penalizing reliability.")
         await update_stat(user, "reliability", -10)

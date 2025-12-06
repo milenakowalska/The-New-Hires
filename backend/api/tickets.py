@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from database import get_db
 from models import Ticket, TicketStatus, TicketPriority, User
 from .gamification_utils import update_reliability
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -60,7 +61,7 @@ async def create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get_db)
 
 @router.patch("/{ticket_id}", response_model=TicketOut)
 async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    stmt = select(Ticket).where(Ticket.id == ticket_id)
+    stmt = select(Ticket).options(selectinload(Ticket.assignee)).where(Ticket.id == ticket_id)
     result = await db.execute(stmt)
     db_ticket = result.scalar_one_or_none()
     
@@ -77,7 +78,7 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, background_
         
         # Check if status is changing to DONE
         if new_status == "DONE" and db_ticket.status != "DONE":
-            db_ticket.completed_at = datetime.now()
+            db_ticket.completed_at = datetime.now(timezone.utc)
             
             # Update Reliability
             if db_ticket.assignee:
