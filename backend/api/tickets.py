@@ -11,7 +11,7 @@ from datetime import datetime
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 # Valid status values
-VALID_STATUSES = {"BACKLOG", "TODO", "IN_PROGRESS", "IN_TEST", "PO_REVIEW", "DONE"}
+VALID_STATUSES = {"BACKLOG", "TODO", "IN_PROGRESS", "CODE_REVIEW", "IN_TEST", "PO_REVIEW", "DONE"}
 VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
 
 class TicketCreate(BaseModel):
@@ -84,7 +84,7 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, background_
                 await update_reliability(db_ticket.assignee, db_ticket)
 
     # Check for status change to CODE_REVIEW
-    if "status" in update_data and update_data["status"] == TicketStatus.CODE_REVIEW:
+    if "status" in update_data and update_data["status"] == "CODE_REVIEW":
         from .ai_chat import trigger_proactive_message
         username = db_ticket.assignee.username if db_ticket.assignee else "Teammate"
         background_tasks.add_task(
