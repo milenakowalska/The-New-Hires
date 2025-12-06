@@ -9,7 +9,7 @@ export default function DashboardLayout() {
     const [hasUnread, setHasUnread] = useState(false);
 
     useEffect(() => {
-        const onNewMessage = (msg: any) => {
+        const onNewMessage = () => {
             // Only show dot if we are NOT on the messages page
             if (!location.pathname.startsWith('/messages')) {
                 setHasUnread(true);
