@@ -10,19 +10,23 @@ from datetime import datetime
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
+# Valid status values
+VALID_STATUSES = {"BACKLOG", "TODO", "IN_PROGRESS", "IN_TEST", "PO_REVIEW", "DONE"}
+VALID_PRIORITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+
 class TicketCreate(BaseModel):
     title: str
     description: str
     type: str = "story"
-    priority: TicketPriority = TicketPriority.MEDIUM
+    priority: str = "MEDIUM"
     story_points: int = 1
     due_date: Optional[datetime] = None
     
 class TicketUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[TicketStatus] = None
-    priority: Optional[TicketPriority] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
     assignee_id: Optional[int] = None
     due_date: Optional[datetime] = None
 
@@ -31,10 +35,11 @@ class TicketOut(BaseModel):
     title: str
     description: str
     type: str
-    priority: TicketPriority
+    priority: str
     story_points: int
-    status: TicketStatus
+    status: str
     assignee_id: Optional[int]
+    due_date: Optional[datetime] = None
     
     class Config:
         orm_mode = True
@@ -64,14 +69,24 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, db: AsyncSe
         
     update_data = ticket_update.dict(exclude_unset=True)
     
-    # Check if status is changing to DONE
-    if "status" in update_data and update_data["status"] == TicketStatus.DONE:
-        if db_ticket.status != TicketStatus.DONE: # Only if changing TO done
+    # Validate status if provided
+    if "status" in update_data:
+        new_status = update_data["status"]
+        if new_status not in VALID_STATUSES:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}. Valid values: {VALID_STATUSES}")
+        
+        # Check if status is changing to DONE
+        if new_status == "DONE" and db_ticket.status != "DONE":
             db_ticket.completed_at = datetime.now()
             
             # Update Reliability
-            if db_ticket.assignee: # Can only update if assigned
+            if db_ticket.assignee:
                 await update_reliability(db_ticket.assignee, db_ticket)
+    
+    # Validate priority if provided
+    if "priority" in update_data:
+        if update_data["priority"] not in VALID_PRIORITIES:
+            raise HTTPException(status_code=400, detail=f"Invalid priority: {update_data['priority']}")
     
     for key, value in update_data.items():
         setattr(db_ticket, key, value)
@@ -79,3 +94,5 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, db: AsyncSe
     await db.commit()
     await db.refresh(db_ticket)
     return db_ticket
+
+

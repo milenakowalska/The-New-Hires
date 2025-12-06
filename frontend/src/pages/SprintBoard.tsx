@@ -16,7 +16,8 @@ const columns = {
     'BACKLOG': { id: 'BACKLOG', title: 'Backlog' },
     'TODO': { id: 'TODO', title: 'To Do' },
     'IN_PROGRESS': { id: 'IN_PROGRESS', title: 'In Progress' },
-    'CODE_REVIEW': { id: 'CODE_REVIEW', title: 'Code Review' },
+    'IN_TEST': { id: 'IN_TEST', title: 'In Test' },
+    'PO_REVIEW': { id: 'PO_REVIEW', title: 'PO Review' },
     'DONE': { id: 'DONE', title: 'Done' },
 };
 
