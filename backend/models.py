@@ -33,7 +33,8 @@ class TicketStatus(str, enum.Enum):
     BACKLOG = "BACKLOG"
     TODO = "TODO"
     IN_PROGRESS = "IN_PROGRESS"
-    CODE_REVIEW = "CODE_REVIEW"
+    IN_TEST = "IN_TEST"
+    PO_REVIEW = "PO_REVIEW"
     DONE = "DONE"
 
 class TicketPriority(str, enum.Enum):
@@ -49,9 +50,9 @@ class Ticket(Base):
     title = Column(String, index=True)
     description = Column(Text)
     type = Column(String, default="story")
-    priority = Column(Enum(TicketPriority), default=TicketPriority.MEDIUM)
+    priority = Column(String, default="MEDIUM")  # Store as string to avoid enum migration
     story_points = Column(Integer, default=1)
-    status = Column(Enum(TicketStatus), default=TicketStatus.BACKLOG)
+    status = Column(String, default="BACKLOG")  # Store as string to avoid enum migration
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     due_date = Column(DateTime(timezone=True), nullable=True)

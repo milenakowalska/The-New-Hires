@@ -100,16 +100,16 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     tickets = ticket_result.scalars().all()
     
     total_tickets = len(tickets)
-    completed_tickets = len([t for t in tickets if t.status == TicketStatus.DONE])
-    in_progress_tickets = len([t for t in tickets if t.status == TicketStatus.IN_PROGRESS])
-    todo_tickets = len([t for t in tickets if t.status == TicketStatus.TODO])
+    completed_tickets = len([t for t in tickets if t.status == "DONE"])
+    in_progress_tickets = len([t for t in tickets if t.status == "IN_PROGRESS"])
+    todo_tickets = len([t for t in tickets if t.status == "TODO"])
     
     # Calculate completion rate
     completion_rate = round((completed_tickets / total_tickets * 100) if total_tickets > 0 else 0)
     
     # Calculate story points
     total_story_points = sum(t.story_points for t in tickets)
-    completed_story_points = sum(t.story_points for t in tickets if t.status == TicketStatus.DONE)
+    completed_story_points = sum(t.story_points for t in tickets if t.status == "DONE")
     
     # Get standups count
     standup_stmt = select(StandupSession).where(StandupSession.user_id == user_id)
