@@ -60,6 +60,7 @@ export default function Onboarding() {
                 project_name: res.data.project_name,
                 tickets_created: res.data.tickets_created
             });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             console.error(e);
             const detail = e.response?.data?.detail || "Failed to generate repo";

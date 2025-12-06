@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 from database import get_db
 from models import User, Message
 from .auth_utils import create_access_token, decode_access_token
-from .messages import sio
+from .socket_instance import sio
 import os
 import httpx
 from pydantic import BaseModel

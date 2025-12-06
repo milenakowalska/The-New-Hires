@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import api from '../api/client';
-import { MoreVertical, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 interface Ticket {
     id: number;
@@ -24,18 +24,19 @@ const columns = {
 export default function SprintBoard() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
 
-    useEffect(() => {
-        fetchTickets();
-    }, []);
-
-    const fetchTickets = async () => {
+    const fetchTickets = useCallback(async () => {
         try {
             const res = await api.get('/tickets');
             setTickets(res.data);
         } catch (error) {
             console.error("Failed to fetch tickets", error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        // eslint-disable-next-line
+        fetchTickets();
+    }, [fetchTickets]);
 
     const getTicketsByStatus = (status: string) => {
         return tickets.filter(t => t.status === status);
@@ -74,9 +75,9 @@ export default function SprintBoard() {
             </div>
 
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 flex overflow-x-auto gap-4 pb-4">
+                <div className="flex-1 flex flex-col md:flex-row gap-4 pb-4 overflow-hidden">
                     {Object.values(columns).map((column) => (
-                        <div key={column.id} className="min-w-[300px] w-[300px] bg-gray-900/50 rounded-xl border border-gray-800 flex flex-col">
+                        <div key={column.id} className="w-full md:flex-1 min-w-0 bg-gray-900/50 rounded-xl border border-gray-800 flex flex-col">
                             <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-900 rounded-t-xl">
                                 <h3 className="font-semibold text-gray-300">{column.title}</h3>
                                 <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">

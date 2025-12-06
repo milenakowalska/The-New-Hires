@@ -1,0 +1,27 @@
+uvicorn main:app --reload
+port 8000
+
+npm install
+npm run dev
+
+fca33c683104888f57fa
+
+localhost:5173
+
+creatdb postgres
+login to postgres CLI (psql postres)
+CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';
+CREATE TABLE users (
+id SERIAL PRIMARY KEY,
+github_id VARCHAR UNIQUE NOT NULL,
+username VARCHAR NOT NULL,
+avatar_url TEXT,
+access_token TEXT,
+xp INTEGER DEFAULT 0,
+level INTEGER DEFAULT 1,
+truthfulness INTEGER DEFAULT 0,
+effort INTEGER DEFAULT 0,
+reliability INTEGER DEFAULT 0,
+collaboration INTEGER DEFAULT 0,
+quality INTEGER DEFAULT 0
+);

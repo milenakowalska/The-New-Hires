@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 # Socket.IO
-sio = messages.sio
+from api.socket_instance import sio
 # Mount at /socket.io so uvicorn main:app works
 app.mount("/socket.io", socketio.ASGIApp(sio, socketio_path=""))
 
@@ -40,6 +40,8 @@ app.include_router(webhooks.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(features.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
+from api import gamification
+app.include_router(gamification.router, prefix="/api")
 
 # We need to expose app_sio for Uvicorn to run if we want SIO to work on root
 # But usually we wrap the app

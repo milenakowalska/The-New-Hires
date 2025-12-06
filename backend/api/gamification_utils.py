@@ -72,7 +72,7 @@ async def update_effort_and_collaboration(user: User, event_type: str, payload: 
         elif action == "review_requested":
             # If I am the reviewer? (Complex to map for MVP)
             pass
-            
+            pass
     elif event_type == "pull_request_review":
         await update_stat(user, "collaboration", 5)
         

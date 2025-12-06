@@ -1,6 +1,4 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, ListTodo, User, LogOut, CheckSquare, Mic, Video } from 'lucide-react';
-import FloatingChat from '../components/FloatingChat';
 
 export default function DashboardLayout() {
     const location = useLocation();
@@ -64,9 +62,6 @@ export default function DashboardLayout() {
             <main className="max-w-7xl mx-auto px-6 py-6">
                 <Outlet />
             </main>
-
-            {/* Floating Chat Widget */}
-            <FloatingChat />
         </div>
     );
 }
