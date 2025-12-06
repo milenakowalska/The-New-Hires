@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from database import get_db
-from models import User
+from models import User, Message
 from .auth_utils import create_access_token, decode_access_token
+from .messages import sio
 import os
 import httpx
 from pydantic import BaseModel
@@ -90,6 +91,50 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
                 print("Debug: Updating existing user...")
                 user.access_token = access_token
                 await db.commit()
+            
+            # Check if HR welcome message already exists for this user
+            # We check for a bot message in general that contains the user's name
+            welcome_check = await db.execute(
+                select(Message).where(
+                    Message.channel == "general",
+                    Message.is_bot == True,
+                    Message.content.contains(f"Welcome to the team, **{user_data['login']}**")
+                )
+            )
+            existing_welcome = welcome_check.scalar_one_or_none()
+            
+            if not existing_welcome:
+                print("Debug: Sending HR welcome message...")
+                # Create HR AI welcome message
+                welcome_message = Message(
+                    channel="general",
+                    content=f"""👋 Welcome to the team, **{user_data["login"]}**!
+
+I'm Sarah from HR, your AI onboarding assistant. We're excited to have you join us!
+
+🚀 **Your first task:** Head over to the **Onboarding** page to generate your personal repository. This will set up your development environment and assign your first tasks.
+
+Click on "Onboarding" in the sidebar to get started. Good luck with your first week!
+
+_Remember: Your performance is being tracked from day one. Make it count!_ 💪""",
+                    sender_id=None,
+                    is_bot=True
+                )
+                db.add(welcome_message)
+                await db.commit()
+                await db.refresh(welcome_message)
+                
+                # Emit the welcome message via socket
+                await sio.emit("new_message", {
+                    "id": welcome_message.id,
+                    "channel": welcome_message.channel,
+                    "content": welcome_message.content,
+                    "sender_id": None,
+                    "is_bot": True,
+                    "timestamp": welcome_message.timestamp.isoformat(),
+                    "sender_name": "Sarah (HR AI)",
+                    "sender_avatar": None
+                })
             
             # Create JWT
             jwt_token = create_access_token({"sub": user.username, "id": user.id})

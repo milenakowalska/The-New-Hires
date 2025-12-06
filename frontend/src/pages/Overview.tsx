@@ -1,4 +1,4 @@
-import { Activity, CheckCircle, Calendar, Users } from 'lucide-react';
+import { Activity, CheckCircle, Calendar, Users, MessageCircle, GitBranch, Trophy, Code, ClipboardCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import socket from '../api/socket';
@@ -13,8 +13,63 @@ interface UserStats {
     quality: number;
 }
 
+interface UserInfo {
+    id: number;
+    username: string;
+    avatar_url: string;
+    level: number;
+    xp: number;
+}
+
+interface ActivityItem {
+    id: number;
+    type: string;
+    description: string;
+    extra_data: Record<string, any>;
+    created_at: string;
+}
+
+// Format relative time (e.g., "2 mins ago")
+const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+};
+
+// Get icon based on activity type
+const getActivityIcon = (type: string) => {
+    switch (type) {
+        case 'TICKET_ASSIGNED':
+        case 'TICKET_COMPLETED':
+            return <ClipboardCheck className="w-4 h-4 text-blue-600" />;
+        case 'MESSAGE_SENT':
+        case 'MESSAGE_RECEIVED':
+            return <MessageCircle className="w-4 h-4 text-green-600" />;
+        case 'REPO_CREATED':
+            return <GitBranch className="w-4 h-4 text-purple-600" />;
+        case 'STANDUP_COMPLETED':
+            return <CheckCircle className="w-4 h-4 text-emerald-600" />;
+        case 'CODE_REVIEW_SUBMITTED':
+            return <Code className="w-4 h-4 text-orange-600" />;
+        case 'ACHIEVEMENT_EARNED':
+            return <Trophy className="w-4 h-4 text-yellow-600" />;
+        default:
+            return <Activity className="w-4 h-4 text-slate-600" />;
+    }
+};
+
 export default function Overview() {
     const [stats, setStats] = useState<UserStats | null>(null);
+    const [user, setUser] = useState<UserInfo | null>(null);
+    const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -22,10 +77,15 @@ export default function Overview() {
             try {
                 const userJson = localStorage.getItem('user');
                 if (!userJson) return;
-                const user = JSON.parse(userJson);
+                const userData = JSON.parse(userJson);
+                setUser(userData);
 
-                const res = await api.get(`/gamification/me/stats?user_id=${user.id}`);
+                const res = await api.get(`/gamification/me/stats?user_id=${userData.id}`);
                 setStats(res.data);
+
+                // Fetch recent activities
+                const activityRes = await api.get(`/activity/recent?user_id=${userData.id}&limit=10`);
+                setActivities(activityRes.data);
             } catch (error) {
                 console.error("Failed to fetch stats", error);
             } finally {
@@ -42,12 +102,19 @@ export default function Overview() {
             console.log("Level UP!", data);
         };
 
+        const onNewActivity = (data: ActivityItem) => {
+            // Add new activity to the top of the list
+            setActivities(prev => [data, ...prev].slice(0, 10));
+        };
+
         socket.on('stats_update', onStatsUpdate);
         socket.on('level_up', onLevelUp);
+        socket.on('new_activity', onNewActivity);
 
         return () => {
             socket.off('stats_update', onStatsUpdate);
             socket.off('level_up', onLevelUp);
+            socket.off('new_activity', onNewActivity);
         };
     }, []);
 
@@ -59,12 +126,6 @@ export default function Overview() {
         { key: 'Reliability', value: stats?.reliability ?? 0 },
         { key: 'Collaboration', value: stats?.collaboration ?? 0 },
         { key: 'Quality', value: stats?.quality ?? 0 },
-    ];
-
-    const recent = [
-        { id: 1, title: 'New specific task assigned: Fix Login CSS', time: '2 mins ago' },
-        { id: 2, title: 'New specific task assigned: Fix Login CSS', time: '2 mins ago' },
-        { id: 3, title: 'New specific task assigned: Fix Login CSS', time: '2 mins ago' },
     ];
 
     const squad = [
@@ -81,15 +142,23 @@ export default function Overview() {
                 <div className="bg-white rounded-2xl p-6 shadow">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center text-white text-xl font-bold">
-                                P1
-                            </div>
+                            {user?.avatar_url ? (
+                                <img
+                                    src={user.avatar_url}
+                                    alt={user.username}
+                                    className="w-16 h-16 rounded-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center text-white text-xl font-bold">
+                                    {user?.username?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                            )}
                             <div>
                                 <div className="flex items-baseline gap-3">
-                                    <h2 className="text-lg font-semibold">Player 1</h2>
+                                    <h2 className="text-lg font-semibold">{user?.username || 'User'}</h2>
                                     <span className="text-sm text-slate-500">Level {stats?.level} • {stats?.xp} XP</span>
                                 </div>
-                                <p className="text-sm text-slate-500">Welcome Back, Player 1</p>
+                                <p className="text-sm text-slate-500">Welcome Back, {user?.username || 'User'}</p>
                             </div>
                         </div>
 
@@ -137,38 +206,25 @@ export default function Overview() {
                     </div>
 
                     <ul className="divide-y">
-                        {recent.map((r) => (
-                            <li key={r.id} className="py-3 flex items-start gap-3">
-                                <div className="flex-none w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                                    <Activity className="w-4 h-4 text-slate-600" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="text-sm font-medium">{r.title}</div>
-                                    <div className="text-xs text-slate-400">{r.time}</div>
-                                </div>
-                                <div className="flex-none text-xs text-slate-400">#task</div>
+                        {activities.length === 0 ? (
+                            <li className="py-6 text-center text-slate-400 text-sm">
+                                No recent activity yet. Start completing tasks!
                             </li>
-                        ))}
+                        ) : (
+                            activities.map((activity) => (
+                                <li key={activity.id} className="py-3 flex items-start gap-3">
+                                    <div className="flex-none w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                                        {getActivityIcon(activity.type)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium">{activity.description}</div>
+                                        <div className="text-xs text-slate-400">{formatRelativeTime(activity.created_at)}</div>
+                                    </div>
+                                    <div className="flex-none text-xs text-slate-400">#{activity.type.toLowerCase().replace('_', '-')}</div>
+                                </li>
+                            ))
+                        )}
                     </ul>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="bg-white rounded-2xl p-6 shadow flex items-center gap-6">
-                    <div className="flex-1">
-                        <h4 className="font-semibold">Level {stats?.level} / 100 XP</h4>
-                        <div className="mt-3 w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                            <div
-                                className="h-3 rounded-full bg-indigo-500 transition-all"
-                                style={{ width: `${(stats?.xp || 0) % 100}%` }}
-                            />
-                        </div>
-                        <div className="text-xs text-slate-400 mt-2">{stats?.xp} XP</div>
-                    </div>
-
-                    <div className="w-48 text-center p-3 bg-slate-50 rounded-lg">
-                        <div className="text-sm text-slate-500">Progress</div>
-                        <div className="text-2xl font-bold">{stats?.xp || 0}</div>
-                    </div>
                 </div>
             </section>
 

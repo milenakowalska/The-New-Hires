@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 from sqlalchemy import desc
 from database import get_db
 from models import Activity, ActivityType
+from api.messages import sio
 import json
 
 router = APIRouter(prefix="/activity", tags=["activity"])
@@ -49,4 +50,16 @@ async def log_activity(
     )
     db.add(activity)
     await db.commit()
+    await db.refresh(activity)
+    
+    # Emit real-time activity event
+    await sio.emit("new_activity", {
+        "id": activity.id,
+        "user_id": user_id,
+        "type": activity_type.value,
+        "description": description,
+        "extra_data": extra_data or {},
+        "created_at": activity.created_at.isoformat()
+    })
+    
     return activity
