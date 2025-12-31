@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
-import openai
+
 # import elevenlabs  # Mocking for now as per minimal requirements or use requests
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
 class CodeReviewRequest(BaseModel):

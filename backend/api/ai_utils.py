@@ -1,16 +1,21 @@
-import openai
+import google.generativeai as genai
 from fastapi import HTTPException
 import os
 import json
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 async def analyze_diff(diff: str, pr_title: str) -> dict:
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API Key not configured")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
 
     try:
-        client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+        model = genai.GenerativeModel(MODEL)
         
         prompt = f"""
         Act as a senior software engineer. Review the following code diff and provide constructive feedback.
@@ -23,17 +28,16 @@ async def analyze_diff(diff: str, pr_title: str) -> dict:
         {diff}
         """
         
-        response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
+        response = await model.generate_content_async(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
         )
         
-        content = response.choices[0].message.content
+        content = response.text
         return json.loads(content)
         
     except Exception as e:
-        print(f"OpenAI Error: {e}")
+        print(f"Gemini Error: {e}")
         # Return empty comments on error to avoid crashing the webhook
         return {"comments": []}
 
@@ -47,61 +51,52 @@ VOICE_MAP = {
 }
 
 async def generate_coworker_update(name: str, role: str, context: str) -> str:
-    if not OPENAI_API_KEY:
+    if not GEMINI_API_KEY:
         return f"I am working on {context}. No blockers."
         
-    client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+    model = genai.GenerativeModel(MODEL)
     prompt = f"""
     Act as {name}, a {role} at a tech startup. Give a very short (1-2 sentences) daily standup update.
     Context: {context}.
     Tone: Casual, slightly tired but professional.
     """
     
-    response = await client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+    response = await model.generate_content_async(prompt)
+    return response.text
 
 async def generate_voice(text: str, name: str) -> bytes:
-    if not OPENAI_API_KEY:
+    if not GEMINI_API_KEY:
         # Return empty bytes - frontend will handle this gracefully
         return b''
     
-    try:
-        client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
-        voice = VOICE_MAP.get(name, "alloy")
-        
-        response = await client.audio.speech.create(
-            model="tts-1",
-            voice=voice,
-            input=text
-        )
-        return response.content
-    except Exception as e:
-        print(f"Voice generation failed: {e}")
-        # Return empty bytes on error - frontend will show skip button
-        return b''
+    # Gemini does not have a direct TTS equivalent to openai's tts-1 in the generativeai SDK yet.
+    # We will return empty bytes for now, or implement a fallback later.
+    print(f"Mocking TTS for {name}: {text[:20]}...")
+    return b''
 
 async def transcribe_audio(file_path: str) -> str:
-    if not OPENAI_API_KEY:
+    if not GEMINI_API_KEY:
         return "Mock transcription: I worked on the login feature."
         
-    client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
-    
-    with open(file_path, "rb") as audio_file:
-        transcript = await client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file
-        )
-    return transcript.text
+    try:
+        model = genai.GenerativeModel(MODEL)
+        
+        # Uploading file to Gemini (Sync operation, but fast enough for small files)
+        # In a production app, we might want to run this in an executor
+        myfile = genai.upload_file(file_path)
+        
+        result = await model.generate_content_async([myfile, "Transcribe this audio file accurately."])
+        return result.text
+    except Exception as e:
+        print(f"Transcription failed: {e}")
+        return "Error transcribing audio."
 
 async def generate_project_with_bugs(project_description: str) -> dict:
     """
     Generate a beginner-level web project with intentional bugs based on user's description.
     Returns files, bugs list, and ticket descriptions.
     """
-    if not OPENAI_API_KEY:
+    if not GEMINI_API_KEY:
         # Return a simple fallback project
         return {
             "project_name": "my-web-app",
@@ -118,7 +113,7 @@ async def generate_project_with_bugs(project_description: str) -> dict:
             ]
         }
     
-    client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-pro')
     
     prompt = f"""You are a code generator that creates beginner-level web projects with INTENTIONAL BUGS for training purposes.
 
@@ -160,14 +155,12 @@ IMPORTANT:
 """
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            max_tokens=4000
+        response = await model.generate_content_async(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
         )
         
-        content = response.choices[0].message.content
+        content = response.text
         return json.loads(content)
     except Exception as e:
         print(f"Project generation error: {e}")

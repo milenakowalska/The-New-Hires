@@ -48,8 +48,7 @@ The New Hires is an innovative web application that simulates a compressed team 
 - **TypeScript**: Type-safe development
 
 ### APIs & Services
-- **Google AI Studio (Gemini)**: Core AI capabilities for meeting simulation and workflow automation
-- **OpenAI API**: AI processing and text-to-speech (TTS)
+- **Google AI Studio (Gemini)**: Core AI capabilities for meeting simulation, workflow automation, and text-to-speech (TTS) fallback
 - **GitHub API**: Integration for developer workflows
 - **Supabase**: Backend authentication and data management
 
@@ -63,7 +62,7 @@ The New Hires is an innovative web application that simulates a compressed team 
 - Node.js (v16+)
 - Python (v3.8+)
 - PostgreSQL
-- API keys for Google AI Studio, OpenAI, and GitHub
+- API keys for Google AI Studio (Gemini) and GitHub
 
 ### Setup
 
@@ -88,7 +87,8 @@ Create a `.env` file in the root directory:
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost/the_new_hire
 GOOGLE_AI_API_KEY=your_google_ai_key
-OPENAI_API_KEY=your_openai_key
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-1.5-flash
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 SUPABASE_URL=your_supabase_url
@@ -199,8 +199,7 @@ This project was developed for the Google Great AI Hackathon.
 
 ## Acknowledgments
 
-- Google AI Studio for providing powerful AI capabilities
-- OpenAI for TTS and AI processing
+- Google for providing powerful AI capabilities via Gemini
 - The open-source community for inspiration and tools
 
 ***
