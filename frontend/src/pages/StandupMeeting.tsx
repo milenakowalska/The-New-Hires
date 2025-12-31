@@ -20,7 +20,8 @@ export default function StandupMeeting() {
 
     const fetchCoworkerUpdate = async () => {
         try {
-            const res = await api.get('/features/standups/daily-update');
+            console.log("DEBUG: Fetching from V2 endpoint...");
+            const res = await api.get('/features/standups/daily-update-v2');
             setCoworker(res.data);
             setAudioError(false);
         } catch (error) {

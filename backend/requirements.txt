@@ -10,4 +10,5 @@ httpx
 python-socketio
 google-generativeai
 google-cloud-storage
+gTTS
 python-dotenv

@@ -8,7 +8,12 @@ from .storage_utils import save_upload_file
 from .ai_utils import generate_coworker_update, generate_voice, transcribe_audio
 from typing import List
 import random
+import random
 import os
+import logging
+
+logging.basicConfig(level=logging.INFO)
+print("LOADING BACKEND/API/FEATURES.PY - IF YOU SEE THIS, THE CODE IS UPDATED")
 
 router = APIRouter(prefix="/features", tags=["features"])
 
@@ -35,8 +40,14 @@ async def upload_standup(user_id: int, file: UploadFile = File(...), db: AsyncSe
     await db.commit()
     return {"url": file_url, "transcript": transcript}
 
-@router.get("/standups/daily-update")
-async def get_coworker_update():
+from fastapi import Response
+
+@router.get("/standups/daily-update-v2")
+async def get_coworker_update(response: Response):
+    # Prevent browser caching of the standup update
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     coworkers = [
         {"name": "Sarah", "role": "Frontend Lead", "context": "debugging the CSS grid layout"},
         {"name": "Mike", "role": "Backend dev", "context": "optimizing database queries"},
@@ -54,21 +65,47 @@ async def get_coworker_update():
     # Save audio temporarily - only if we got valid audio
     audio_url = None
     if audio_bytes and len(audio_bytes) > 0:
-        filename = f"coworker_{coworker['name']}_{random.randint(1000,9999)}.mp3"
-        filepath = os.path.join("static", filename)
-        os.makedirs("static", exist_ok=True)
-        with open(filepath, "wb") as f:
-            f.write(audio_bytes)
+        # Use absolute path to ensure we write to the correct static directory
+        # Current file is backend/api/features.py
+        # We want backend/static
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        backend_dir = os.path.dirname(current_dir)
+        static_dir = os.path.join(backend_dir, "static")
+        
+        os.makedirs(static_dir, exist_ok=True)
+        
+        import time
+        filename = f"coworker_{coworker['name']}_{int(time.time())}.mp3"
+        filepath = os.path.join(static_dir, filename)
+        
+        logging.info(f"DEBUG_LOG: Writing {len(audio_bytes)} bytes to {filepath}")
+        
+        try:
+            with open(filepath, "wb") as f:
+                f.write(audio_bytes)
+                f.flush()
+                os.fsync(f.fileno())
+            logging.info(f"DEBUG_LOG: File write complete. Exists? {os.path.exists(filepath)}")
+            # Set permissions to be sure
+            os.chmod(filepath, 0o644)
+        except Exception as e:
+            logging.error(f"DEBUG_LOG: Error writing file: {e}")
+        
+        # Ensure we return the correct URL for the static mount
         audio_url = f"http://localhost:8000/static/{filename}"
+        logging.info(f"DEBUG_LOG: Returning URL {audio_url}")
+        
     else:
         # No audio available - frontend will show text only and skip button
         audio_url = ""
+        filepath = "N/A"
         
     return {
         "name": coworker["name"],
         "role": coworker["role"],
         "text": text,
-        "audio_url": audio_url
+        "audio_url": audio_url,
+        "debug_path": filepath
     }
 
 @router.post("/retrospectives/upload")

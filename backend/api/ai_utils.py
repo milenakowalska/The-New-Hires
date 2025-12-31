@@ -2,6 +2,9 @@ import google.generativeai as genai
 from fastapi import HTTPException
 import os
 import json
+import asyncio
+from gtts import gTTS
+import io
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -54,25 +57,44 @@ async def generate_coworker_update(name: str, role: str, context: str) -> str:
     if not GEMINI_API_KEY:
         return f"I am working on {context}. No blockers."
         
-    model = genai.GenerativeModel(MODEL)
-    prompt = f"""
-    Act as {name}, a {role} at a tech startup. Give a very short (1-2 sentences) daily standup update.
-    Context: {context}.
-    Tone: Casual, slightly tired but professional.
-    """
-    
-    response = await model.generate_content_async(prompt)
-    return response.text
+    try:
+        model = genai.GenerativeModel(MODEL)
+        prompt = f"""
+        Act as {name}, a {role} at a tech startup. Give a very short (1-2 sentences) daily standup update.
+        Context: {context}.
+        Tone: Casual, slightly tired but professional.
+        """
+        
+        response = await model.generate_content_async(prompt)
+        return response.text
+    except Exception as e:
+        print(f"Gemini generation error: {e}")
+        return f"I am working on {context}. No blockers."
 
 async def generate_voice(text: str, name: str) -> bytes:
-    if not GEMINI_API_KEY:
-        # Return empty bytes - frontend will handle this gracefully
-        return b''
+    # We can use gTTS even without an API key config check, but keeping alignment with others
+    # Using a simple lock or executor might be needed if this blocks, but gTTS is sync.
+    # We'll run it in a thread to keep async happy.
     
-    # Gemini does not have a direct TTS equivalent to openai's tts-1 in the generativeai SDK yet.
-    # We will return empty bytes for now, or implement a fallback later.
-    print(f"Mocking TTS for {name}: {text[:20]}...")
-    return b''
+    def _create_audio():
+        # Map names to accents/tlds if desired, e.g. 'com.au' for Australian
+        tld = "com"
+        if name == "Mike": tld = "co.uk"
+        if name == "Sarah": tld = "com.au"
+        
+        tts = gTTS(text=text, lang='en', tld=tld)
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return fp.read()
+
+    try:
+        loop = asyncio.get_event_loop()
+        audio_bytes = await loop.run_in_executor(None, _create_audio)
+        return audio_bytes
+    except Exception as e:
+        print(f"Voice generation failed: {e}")
+        return b''
 
 async def transcribe_audio(file_path: str) -> str:
     if not GEMINI_API_KEY:

@@ -12,11 +12,18 @@ import os
 
 app = FastAPI(title="The New Hire API", description="API for The New Hire Job Simulator")
 
+print("\n\n" + "="*50)
+print("STARTING THE NEW HIRES API... v3 (Audio Fixes Applied)")
+print(f"Features module loaded from: {features.__file__}")
+print("="*50 + "\n\n")
+
 # Create static directory if it doesn't exist
-os.makedirs("static", exist_ok=True)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(current_dir, "static")
+os.makedirs(static_dir, exist_ok=True)
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Configure CORS
 app.add_middleware(

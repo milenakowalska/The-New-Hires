@@ -24,9 +24,30 @@ async def generate_code_review(request: CodeReviewRequest):
 
 @router.post("/audio/generate")
 async def generate_audio(request: AudioRequest):
-    if not ELEVENLABS_API_KEY:
-        return {"audio_url": "https://storage.googleapis.com/mock-bucket/mock-audio.mp3"}
+    from .ai_utils import generate_voice
+    import uuid
+    
+    # Generate unique filename
+    filename = f"coworker_{uuid.uuid4().hex}.mp3"
+    
+    # Use absolute path to ensure we write to the correct static directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(current_dir)
+    static_dir = os.path.join(backend_dir, "static")
+    os.makedirs(static_dir, exist_ok=True)
+    
+    filepath = os.path.join(static_dir, filename)
+    
+    # Generate audio bytes
+    audio_bytes = await generate_voice(request.text, "Sarah") # Default to Sarah for now or map voice_id
+    
+    if not audio_bytes:
+         return {"audio_url": ""}
+
+    # Save to static folder
+    with open(filepath, "wb") as f:
+        f.write(audio_bytes)
         
-    # Call ElevenLabs API
-    # Return mock URL for now
-    return {"audio_url": "https://storage.googleapis.com/mock-bucket/generated-audio.mp3"}
+    # Return local URL
+    # Assuming running on localhost:8000
+    return {"audio_url": f"http://localhost:8000/static/{filename}"}
