@@ -1,7 +1,7 @@
 import os
 import random
 import asyncio
-import google.generativeai as genai
+from google import genai
 from sqlalchemy.future import select
 from models import User, Message
 from database import AsyncSessionLocal
@@ -12,8 +12,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
+client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 AI_TEAMMATES = [
@@ -58,7 +59,6 @@ async def trigger_ai_response_task(channel: str, user_message: str):
             teammate = random.choice(AI_TEAMMATES)
             user = await get_or_create_ai_user(db, teammate)
             
-            model = genai.GenerativeModel(MODEL)
             
             channel_context = {
                 "general": "You are hanging out in the #general channel. Keep it casual, fun, and broad. Answer in a general way.",
@@ -79,7 +79,7 @@ async def trigger_ai_response_task(channel: str, user_message: str):
             Respond to them. Keep it short (1-2 sentences).
             """
             
-            response = await model.generate_content_async(prompt)
+            response = await client.aio.models.generate_content(model=MODEL, contents=prompt)
             content = response.text
             
             msg = Message(
@@ -121,7 +121,6 @@ async def trigger_proactive_message(channel: str, prompt_context: str, user_name
             teammate = random.choice(AI_TEAMMATES)
             user = await get_or_create_ai_user(db, teammate)
             
-            model = genai.GenerativeModel(MODEL)
             
             prompt = f"""
             Act as {teammate['name']}, a {teammate['role']} at a tech startup.
@@ -133,7 +132,7 @@ async def trigger_proactive_message(channel: str, prompt_context: str, user_name
             Write a short message (1 sentence) to the channel or the user.
             """
             
-            response = await model.generate_content_async(prompt)
+            response = await client.aio.models.generate_content(model=MODEL, contents=prompt)
             content = response.text
             
             msg = Message(

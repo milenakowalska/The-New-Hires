@@ -50,9 +50,9 @@ class Ticket(Base):
     title = Column(String, index=True)
     description = Column(Text)
     type = Column(String, default="story")
-    priority = Column(String, default="MEDIUM")  # Store as string to avoid enum migration
+    priority = Column(Enum(TicketPriority), default=TicketPriority.MEDIUM)
     story_points = Column(Integer, default=1)
-    status = Column(String, default="BACKLOG")  # Store as string to avoid enum migration
+    status = Column(Enum(TicketStatus), default=TicketStatus.BACKLOG)
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     due_date = Column(DateTime(timezone=True), nullable=True)

@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 from fastapi import HTTPException
 import os
 import json
@@ -10,15 +10,16 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
+client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
 async def analyze_diff(diff: str, pr_title: str) -> dict:
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
 
     try:
-        model = genai.GenerativeModel(MODEL)
+
         
         prompt = f"""
         Act as a senior software engineer. Review the following code diff and provide constructive feedback.
@@ -31,9 +32,10 @@ async def analyze_diff(diff: str, pr_title: str) -> dict:
         {diff}
         """
         
-        response = await model.generate_content_async(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
+        response = await client.aio.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+            config={"response_mime_type": "application/json"}
         )
         
         content = response.text
@@ -58,14 +60,13 @@ async def generate_coworker_update(name: str, role: str, context: str) -> str:
         return f"I am working on {context}. No blockers."
         
     try:
-        model = genai.GenerativeModel(MODEL)
         prompt = f"""
         Act as {name}, a {role} at a tech startup. Give a very short (1-2 sentences) daily standup update.
         Context: {context}.
         Tone: Casual, slightly tired but professional.
         """
         
-        response = await model.generate_content_async(prompt)
+        response = await client.aio.models.generate_content(model=MODEL, contents=prompt)
         return response.text
     except Exception as e:
         print(f"Gemini generation error: {e}")
@@ -101,13 +102,10 @@ async def transcribe_audio(file_path: str) -> str:
         return "Mock transcription: I worked on the login feature."
         
     try:
-        model = genai.GenerativeModel(MODEL)
+        # Uploading file to Gemini
+        myfile = client.files.upload(path=file_path)
         
-        # Uploading file to Gemini (Sync operation, but fast enough for small files)
-        # In a production app, we might want to run this in an executor
-        myfile = genai.upload_file(file_path)
-        
-        result = await model.generate_content_async([myfile, "Transcribe this audio file accurately."])
+        result = await client.aio.models.generate_content(model=MODEL, contents=[myfile, "Transcribe this audio file accurately."])
         return result.text
     except Exception as e:
         print(f"Transcription failed: {e}")
@@ -134,8 +132,6 @@ async def generate_project_with_bugs(project_description: str) -> dict:
                 {"title": "Implement main feature", "description": "Add the core functionality", "type": "story", "priority": "HIGH", "story_points": 5}
             ]
         }
-    
-    model = genai.GenerativeModel('gemini-1.5-pro')
     
     prompt = f"""You are a code generator that creates beginner-level web projects with INTENTIONAL BUGS for training purposes.
 
@@ -177,9 +173,10 @@ IMPORTANT:
 """
 
     try:
-        response = await model.generate_content_async(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
+        response = await client.aio.models.generate_content(
+            model='gemini-1.5-pro',
+            contents=prompt,
+            config={"response_mime_type": "application/json"}
         )
         
         content = response.text

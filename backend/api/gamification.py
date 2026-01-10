@@ -20,7 +20,7 @@ class UserStats(BaseModel):
     avatar_url: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.get("/leaderboard", response_model=List[UserStats])
 async def get_leaderboard(limit: int = 10, db: AsyncSession = Depends(get_db)):

@@ -84,14 +84,14 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, background_
             if db_ticket.assignee:
                 await update_reliability(db_ticket.assignee, db_ticket)
 
-    # Check for status change to CODE_REVIEW
-    if "status" in update_data and update_data["status"] == "CODE_REVIEW":
+    # Check for status change to IN_TEST
+    if "status" in update_data and update_data["status"] == "IN_TEST":
         from .ai_chat import trigger_proactive_message
         username = db_ticket.assignee.username if db_ticket.assignee else "Teammate"
         background_tasks.add_task(
             trigger_proactive_message,
             "code-review",
-            f"User {username} just moved ticket '{db_ticket.title}' to Code Review. Offer to review their PR.",
+            f"User {username} just moved ticket '{db_ticket.title}' to Testing/Review. Offer to help test or review.",
             username
         )
     

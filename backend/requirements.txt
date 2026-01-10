@@ -8,7 +8,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 httpx
 python-socketio
-google-generativeai
+google-genai
 google-cloud-storage
 gTTS
 python-dotenv
