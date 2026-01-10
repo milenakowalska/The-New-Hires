@@ -88,7 +88,7 @@ Create a `.env` file in the root directory:
 DATABASE_URL=postgresql://postgres:postgres@localhost/the_new_hire
 GOOGLE_AI_API_KEY=your_google_ai_key
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.0-flash
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 SUPABASE_URL=your_supabase_url

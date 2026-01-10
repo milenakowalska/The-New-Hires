@@ -8,11 +8,11 @@ import io
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 client = None
 if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1'})
 
 async def analyze_diff(diff: str, pr_title: str) -> dict:
     if not GEMINI_API_KEY:
@@ -32,7 +32,7 @@ async def analyze_diff(diff: str, pr_title: str) -> dict:
         {diff}
         """
         
-        response = await client.aio.models.generate_content(
+        response = client.models.generate_content(
             model=MODEL,
             contents=prompt,
             config={"response_mime_type": "application/json"}
@@ -66,7 +66,7 @@ async def generate_coworker_update(name: str, role: str, context: str) -> str:
         Tone: Casual, slightly tired but professional.
         """
         
-        response = await client.aio.models.generate_content(model=MODEL, contents=prompt)
+        response = client.models.generate_content(model=MODEL, contents=prompt)
         return response.text
     except Exception as e:
         print(f"Gemini generation error: {e}")
@@ -105,7 +105,7 @@ async def transcribe_audio(file_path: str) -> str:
         # Uploading file to Gemini
         myfile = client.files.upload(path=file_path)
         
-        result = await client.aio.models.generate_content(model=MODEL, contents=[myfile, "Transcribe this audio file accurately."])
+        result = client.models.generate_content(model=MODEL, contents=[myfile, "Transcribe this audio file accurately."])
         return result.text
     except Exception as e:
         print(f"Transcription failed: {e}")
@@ -173,8 +173,8 @@ IMPORTANT:
 """
 
     try:
-        response = await client.aio.models.generate_content(
-            model='gemini-1.5-pro',
+        response = client.models.generate_content(
+            model=MODEL,
             contents=prompt,
             config={"response_mime_type": "application/json"}
         )

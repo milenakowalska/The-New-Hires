@@ -10,11 +10,11 @@ from datetime import datetime
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 client = None
 if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1'})
 
 
 AI_TEAMMATES = [
@@ -79,7 +79,7 @@ async def trigger_ai_response_task(channel: str, user_message: str):
             Respond to them. Keep it short (1-2 sentences).
             """
             
-            response = await client.aio.models.generate_content(model=MODEL, contents=prompt)
+            response = client.models.generate_content(model=MODEL, contents=prompt)
             content = response.text
             
             msg = Message(
@@ -132,7 +132,7 @@ async def trigger_proactive_message(channel: str, prompt_context: str, user_name
             Write a short message (1 sentence) to the channel or the user.
             """
             
-            response = await client.aio.models.generate_content(model=MODEL, contents=prompt)
+            response = client.models.generate_content(model=MODEL, contents=prompt)
             content = response.text
             
             msg = Message(
