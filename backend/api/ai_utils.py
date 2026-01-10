@@ -5,6 +5,7 @@ import json
 import asyncio
 from gtts import gTTS
 import io
+import httpx
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -22,11 +23,30 @@ async def analyze_diff(diff: str, pr_title: str) -> dict:
 
         
         prompt = f"""
-        Act as a senior software engineer. Review the following code diff and provide constructive feedback.
-        Return the response as a JSON object with a key "comments", which is a list of objects containing "file", "line", and "message".
-        IMPORTANT: The "file" must be the filename as seen in the diff. The "line" must be the line number in the new file (right side of diff).
+        Act as a Passionate, Senior Human Developer. Do NOT sound like an AI. 
         
         PR Title: {pr_title}
+        
+        **Instructions:**
+        1. **Be Opinionated**: Write in the first person ("I"). Tell me what you *honestly* think.
+        2. **Be Personal**: "I love how you did X" or "This part makes me nervous".
+        3. **Comprehensive Review**: Do NOT be brief. I want a detailed analysis.
+        4. **Clean Code Focus**: If there are no bugs, focus entirely on readability/elegance.
+        
+        **Your Output:**
+        Return a JSON object with this structure:
+        {{
+            "summary": "Your personal take on this PR. 3-4 sentences. Be thorough.",
+            "comments": [
+                {{
+                    "file": "filename",
+                    "line": line_number_int,
+                    "category": "Opinion|Security|Performance|Pro-Tip",
+                    "message": "Your personal thought on this specific line.",
+                    "suggestion": "Optional code snippet if you have a better idea"
+                }}
+            ]
+        }}
         
         Diff:
         {diff}
@@ -34,17 +54,98 @@ async def analyze_diff(diff: str, pr_title: str) -> dict:
         
         response = client.models.generate_content(
             model=MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"}
+            contents=prompt
         )
         
         content = response.text
+        # Clean up potential markdown formatting
+        if content.strip().startswith("```json"):
+            content = content.strip()[7:]
+        if content.strip().startswith("```"):
+            content = content.strip()[3:]
+        if content.strip().endswith("```"):
+            content = content.strip()[:-3]
+            
         return json.loads(content)
         
     except Exception as e:
         print(f"Gemini Error: {e}")
-        # Return empty comments on error to avoid crashing the webhook
-        return {"comments": []}
+        return {"summary": f"Yikes! I hit a snag while reading your code. (Error: {str(e)})", "comments": []}
+
+async def fetch_pr_diff(pr_url: str) -> str:
+    """
+    Fetches the diff of a GitHub PR. Validates URL and checks for existence.
+    """
+    if "github.com" not in pr_url or "/pull/" not in pr_url:
+        return "Error: Invalid GitHub PR URL. Please provide a link like `https://github.com/owner/repo/pull/123`."
+
+    diff_url = pr_url
+    if not diff_url.endswith(".diff"):
+        diff_url = f"{diff_url}.diff"
+        
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(diff_url, follow_redirects=True)
+            
+            if response.status_code == 404:
+                return "Error: Repo not found or private. I can only review public repositories."
+            
+            if response.status_code == 200:
+                return response.text
+            else:
+                return f"Error fetching diff: HTTP {response.status_code}"
+    except Exception as e:
+        return f"Error fetching diff: {str(e)}"
+
+async def process_pr_link(pr_url: str) -> str:
+    """
+    Fetches diff and generates a detailed review summary for chat.
+    """
+    diff_text = await fetch_pr_diff(pr_url)
+    
+    if diff_text.startswith("Error"):
+        # Explicitly return the error message to the user
+        return f"⚠️ {diff_text}"
+        
+    # If the diff is huge, truncate it
+    if len(diff_text) > 40000:
+        diff_text = diff_text[:40000] + "...(truncated)"
+    
+    # Analyze the diff
+    analysis = await analyze_diff(diff_text, f"PR: {pr_url}")
+    
+    summary = analysis.get("summary", "No summary provided.")
+    comments = analysis.get("comments", [])
+    
+    message = f"## 🕵️ AI Code Review\n**PR:** {pr_url}\n\n"
+    message += f"### 💭 Reviewer's Opinion\n{summary}\n\n"
+    
+    if comments:
+        message += "### 🔍 Key Findings\n"
+        # Prioritize security, performance, opinion, then pro-tips
+        sorted_comments = sorted(comments, key=lambda x: 0 if x.get('category') == 'Security' else 1 if x.get('category') == 'Performance' else 2 if x.get('category') == 'Opinion' else 3)
+        
+        for comment in sorted_comments[:6]:
+            icon = "🗣️"
+            cat = comment.get('category', 'Opinion')
+            
+            if cat == 'Security': icon = "🔒"
+            elif cat == 'Performance': icon = "⚡"
+            elif cat == 'Opinion': icon = "💬"
+            elif 'Pro-Tip' in cat: icon = "💡"
+            
+            message += f"- {icon} **{comment.get('file')}** (Line {comment.get('line')}): {comment.get('message')}\n"
+            if comment.get('suggestion'):
+                 message += f"  > Suggestion: `{comment.get('suggestion')}`\n"
+    
+        if len(comments) > 6:
+            message += f"\n*...and {len(comments) - 6} more improvements found.*"
+    elif "Error" in summary or "Yikes" in summary:
+        message += "\n❌ **Review Interrupted**: See my opinion above for what went wrong."
+    else:
+        message += "✅ **Code looks clean!** I honestly couldn't find anything to complain about."
+
+    return message
 
 # Voice Mapping
 VOICE_MAP = {
@@ -175,11 +276,18 @@ IMPORTANT:
     try:
         response = client.models.generate_content(
             model=MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"}
+            contents=prompt
         )
         
         content = response.text
+        # Clean up potential markdown formatting
+        if content.strip().startswith("```json"):
+            content = content.strip()[7:]
+        if content.strip().startswith("```"):
+            content = content.strip()[3:]
+        if content.strip().endswith("```"):
+            content = content.strip()[:-3]
+            
         return json.loads(content)
     except Exception as e:
         print(f"Project generation error: {e}")

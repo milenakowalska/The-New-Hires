@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from .ai_chat import trigger_proactive_message
+from .ai_chat import trigger_proactive_message, CONVERSATION_STARTERS
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from database import get_db
@@ -8,6 +8,7 @@ from .auth_utils import create_access_token, decode_access_token
 from .socket_instance import sio
 import os
 import httpx
+import random
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -137,11 +138,12 @@ _Remember: Your performance is being tracked from day one. Make it count!_ 💪"
                     "sender_avatar": None
                 })
             
-            # Trigger random weekend message
+            # Trigger random proactive message with varied topics
+            prompt_topic = random.choice(CONVERSATION_STARTERS)
             background_tasks.add_task(
                 trigger_proactive_message, 
                 "random", 
-                "The user just logged in. Ask them how their weekend was or tell a joke.", 
+                f"The user just logged in. {prompt_topic}", 
                 user.username
             )
             
