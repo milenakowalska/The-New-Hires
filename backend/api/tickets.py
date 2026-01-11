@@ -92,6 +92,27 @@ async def update_ticket(ticket_id: int, ticket_update: TicketUpdate, background_
              if db_ticket.assignee:
                 await update_stat(db_ticket.assignee, "effort", 1)
 
+        # Log Activity
+        if db_ticket.assignee:
+            from .activity import log_activity
+            from models import ActivityType
+            
+            activity_type = ActivityType.TICKET_STATUS_CHANGED
+            description = f"Updated ticket '{db_ticket.title}' to {new_status}"
+            
+            # Special case for "sending for review"
+            if new_status == "IN_TEST":
+                activity_type = ActivityType.PULL_REQUEST_OPENED
+                description = f"Submitted '{db_ticket.title}' for review"
+
+            await log_activity(
+                db,
+                db_ticket.assignee.id,
+                activity_type,
+                description,
+                {"ticket_id": db_ticket.id, "status": new_status, "title": db_ticket.title}
+            )
+
     # Check for status change to IN_TEST
     if "status" in update_data and update_data["status"] == "IN_TEST":
         from .ai_chat import trigger_proactive_message

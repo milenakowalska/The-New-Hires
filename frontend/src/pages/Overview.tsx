@@ -70,28 +70,32 @@ export default function Overview() {
     const [stats, setStats] = useState<UserStats | null>(null);
     const [user, setUser] = useState<UserInfo | null>(null);
     const [activities, setActivities] = useState<ActivityItem[]>([]);
+    const [totalActivities, setTotalActivities] = useState(0);
+    const [skip, setSkip] = useState(0);
     const [loading, setLoading] = useState(true);
 
+    const fetchStats = async () => {
+        try {
+            const userJson = localStorage.getItem('user');
+            if (!userJson) return;
+            const userData = JSON.parse(userJson);
+            setUser(userData);
+
+            const res = await api.get(`/gamification/me/stats?user_id=${userData.id}`);
+            setStats(res.data);
+
+            // Fetch recent activities
+            const activityRes = await api.get(`/activity/recent?user_id=${userData.id}&limit=5&skip=${skip}`);
+            setActivities(activityRes.data.items || []);
+            setTotalActivities(activityRes.data.total || 0);
+        } catch (error) {
+            console.error("Failed to fetch stats", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const userJson = localStorage.getItem('user');
-                if (!userJson) return;
-                const userData = JSON.parse(userJson);
-                setUser(userData);
-
-                const res = await api.get(`/gamification/me/stats?user_id=${userData.id}`);
-                setStats(res.data);
-
-                // Fetch recent activities
-                const activityRes = await api.get(`/activity/recent?user_id=${userData.id}&limit=10`);
-                setActivities(activityRes.data);
-            } catch (error) {
-                console.error("Failed to fetch stats", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchStats();
 
         const onStatsUpdate = (data: Partial<UserStats>) => {
@@ -103,8 +107,11 @@ export default function Overview() {
         };
 
         const onNewActivity = (data: ActivityItem) => {
-            // Add new activity to the top of the list
-            setActivities(prev => [data, ...prev].slice(0, 10));
+            // Add new activity to the top of the list if we are on the first page
+            if (skip === 0) {
+                setActivities(prev => [data, ...prev].slice(0, 5));
+                setTotalActivities(prev => prev + 1);
+            }
         };
 
         socket.on('stats_update', onStatsUpdate);
@@ -116,7 +123,7 @@ export default function Overview() {
             socket.off('level_up', onLevelUp);
             socket.off('new_activity', onNewActivity);
         };
-    }, []);
+    }, [skip]); // Refetch when skip changes
 
     if (loading) return <div className="text-center py-12">Loading...</div>;
 
@@ -198,7 +205,6 @@ export default function Overview() {
                     </div>
                 </div>
 
-                {/* Recent Activity */}
                 <div className="bg-white rounded-2xl p-6 shadow">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold">Recent Activity</h3>
@@ -225,6 +231,29 @@ export default function Overview() {
                             ))
                         )}
                     </ul>
+
+                    {/* Pagination Controls */}
+                    {totalActivities > 5 && (
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
+                            <button
+                                onClick={() => setSkip(prev => Math.max(0, prev - 5))}
+                                disabled={skip === 0}
+                                className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-slate-600"
+                            >
+                                Previous
+                            </button>
+                            <div className="text-xs font-medium text-slate-500">
+                                Page {Math.floor(skip / 5) + 1} of {Math.ceil(totalActivities / 5) || 1}
+                            </div>
+                            <button
+                                onClick={() => setSkip(prev => prev + 5)}
+                                disabled={skip + 5 >= totalActivities}
+                                className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-slate-600"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             </section>
 

@@ -12,27 +12,39 @@ router = APIRouter(prefix="/activity", tags=["activity"])
 @router.get("/recent")
 async def get_recent_activity(
     user_id: int,
-    limit: int = 10,
+    skip: int = 0,
+    limit: int = 5,
     db: AsyncSession = Depends(get_db)
 ):
-    """Get recent activity for a user"""
+    """Get recent activity for a user with pagination"""
+    from sqlalchemy import func
+    
+    # Get total count
+    count_stmt = select(func.count()).select_from(Activity).where(Activity.user_id == user_id)
+    count_result = await db.execute(count_stmt)
+    total_count = count_result.scalar()
+
+    # Get paginated activities
     stmt = select(Activity).where(
         Activity.user_id == user_id
-    ).order_by(desc(Activity.created_at)).limit(limit)
+    ).order_by(desc(Activity.created_at)).offset(skip).limit(limit)
     
     result = await db.execute(stmt)
     activities = result.scalars().all()
     
-    return [
-        {
-            "id": activity.id,
-            "type": activity.activity_type.value,
-            "description": activity.description,
-            "extra_data": json.loads(activity.extra_data) if activity.extra_data else {},
-            "created_at": activity.created_at.isoformat()
-        }
-        for activity in activities
-    ]
+    return {
+        "total": total_count,
+        "items": [
+            {
+                "id": activity.id,
+                "type": activity.activity_type.value,
+                "description": activity.description,
+                "extra_data": json.loads(activity.extra_data) if activity.extra_data else {},
+                "created_at": activity.created_at.isoformat()
+            }
+            for activity in activities
+        ]
+    }
 
 async def log_activity(
     db: AsyncSession,

@@ -36,6 +36,16 @@ async def upload_standup(user_id: int, file: UploadFile = File(...), db: AsyncSe
     if user:
         await calculate_truthfulness(user, transcript, db)
         
+        from .activity import log_activity
+        from models import ActivityType
+        await log_activity(
+            db,
+            user_id,
+            ActivityType.STANDUP_COMPLETED,
+            "Completed daily standup",
+            {"transcript": transcript[:100] + "..." if len(transcript) > 100 else transcript}
+        )
+        
     await db.commit()
     return {"url": file_url, "transcript": transcript}
 
@@ -114,6 +124,27 @@ async def upload_retrospective(user_id: int, file: UploadFile = File(...), db: A
     
     retro = Retrospective(user_id=user_id, video_url=file_url, consent_given=True)
     db.add(retro)
+    
+    # Update Stats (Generic boost for retro)
+    from .gamification_utils import update_stat
+    from models import User
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user:
+        await update_stat(user, "collaboration", 5)
+        
+    # Log Activity
+    from .activity import log_activity
+    from models import ActivityType
+    await log_activity(
+        db,
+        user_id,
+        ActivityType.RETROSPECTIVE_COMPLETED,
+        "Completed sprint retrospective",
+        {"video_url": file_url}
+    )
+    
     await db.commit()
     return {"url": file_url}
 
