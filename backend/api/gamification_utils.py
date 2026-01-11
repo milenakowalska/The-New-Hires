@@ -9,7 +9,7 @@ async def award_xp(user: User, amount: int):
     user.xp = (user.xp or 0) + amount
     
     # Check Level Up
-    new_level = 1 + (user.xp // 500)
+    new_level = 1 + (user.xp // 100)
     if new_level > (user.level or 1):
         user.level = new_level
         print(f"User {user.username} leveled up to {new_level}!")
