@@ -5,6 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 from database import get_db
 from models import User, Achievement
+from .socket_instance import sio
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -35,3 +36,25 @@ async def get_my_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
     return user
+
+@router.post("/sprint/reset")
+async def reset_sprint(user_id: int, db: AsyncSession = Depends(get_db)):
+    from datetime import datetime, timezone
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return {"error": "User not found"}
+        
+    user.sprint_start_date = datetime.now(timezone.utc)
+    
+    # Optionally reset tickets if they were closed? 
+    # For now, just resetting the time counter as requested.
+    
+    await db.commit()
+
+    # Notify frontend to refresh sprint data
+    await sio.emit("sprint_updated", {"user_id": user_id, "current_day": 1})
+
+    return {"message": "Sprint reset successfully", "new_start_date": user.sprint_start_date.isoformat()}

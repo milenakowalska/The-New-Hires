@@ -183,6 +183,19 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     standup_result = await db.execute(standup_stmt)
     standups = standup_result.scalars().all()
     
+    # Calculate current day of sprint (1-7)
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    # Ensure sprint_start_date is aware
+    start_date = user.sprint_start_date
+    if start_date.tzinfo is None:
+        start_date = start_date.replace(tzinfo=timezone.utc)
+        
+    diff = now - start_date
+    sprint_day = diff.days + 1
+    
+    # Cap at 7 for display logic, or let frontend handle "Sprint Complete" state
+    
     return {
         "user": {
             "username": user.username,
@@ -209,6 +222,7 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
             "completed": completed_story_points
         },
         "standups_completed": len(standups),
-        "sprint_days": 7
+        "sprint_days": 7,
+        "current_day": sprint_day
     }
 

@@ -14,6 +14,7 @@ class User(Base):
     access_token = Column(String) # Encrypted
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
+    sprint_start_date = Column(DateTime(timezone=True), server_default=func.now())
     
     # Gamification Stats
     truthfulness = Column(Integer, default=50)
