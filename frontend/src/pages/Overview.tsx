@@ -69,29 +69,48 @@ const getActivityIcon = (type: string) => {
 export default function Overview() {
     const [stats, setStats] = useState<UserStats | null>(null);
     const [user, setUser] = useState<UserInfo | null>(null);
+    const [sprintDay, setSprintDay] = useState(1);
     const [activities, setActivities] = useState<ActivityItem[]>([]);
+    const [totalActivities, setTotalActivities] = useState(0);
+    const [skip, setSkip] = useState(0);
     const [loading, setLoading] = useState(true);
 
+    const fetchStats = async () => {
+        try {
+            const userJson = localStorage.getItem('user');
+            if (!userJson) return;
+            const userData = JSON.parse(userJson);
+            setUser(userData);
+
+            const [statsRes, activityRes, sprintRes] = await Promise.all([
+                api.get(`/gamification/me/stats?user_id=${userData.id}`),
+                api.get(`/activity/recent?user_id=${userData.id}&limit=5&skip=${skip}`),
+                api.get(`/features/retrospectives/sprint-stats?user_id=${userData.id}`)
+            ]);
+
+            setStats(statsRes.data);
+            setActivities(activityRes.data.items || []);
+            setTotalActivities(activityRes.data.total || 0);
+            setSprintDay(sprintRes.data.current_day || 1);
+        } catch (error) {
+            console.error("Failed to fetch stats", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResetSprint = async () => {
+        if (!user) return;
+        try {
+            await api.post(`/gamification/sprint/reset?user_id=${user.id}`);
+            // Refetch everything
+            fetchStats();
+        } catch (error) {
+            console.error("Failed to reset sprint", error);
+        }
+    };
+
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const userJson = localStorage.getItem('user');
-                if (!userJson) return;
-                const userData = JSON.parse(userJson);
-                setUser(userData);
-
-                const res = await api.get(`/gamification/me/stats?user_id=${userData.id}`);
-                setStats(res.data);
-
-                // Fetch recent activities
-                const activityRes = await api.get(`/activity/recent?user_id=${userData.id}&limit=10`);
-                setActivities(activityRes.data);
-            } catch (error) {
-                console.error("Failed to fetch stats", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchStats();
 
         const onStatsUpdate = (data: Partial<UserStats>) => {
@@ -103,20 +122,29 @@ export default function Overview() {
         };
 
         const onNewActivity = (data: ActivityItem) => {
-            // Add new activity to the top of the list
-            setActivities(prev => [data, ...prev].slice(0, 10));
+            // Add new activity to the top of the list if we are on the first page
+            if (skip === 0) {
+                setActivities(prev => [data, ...prev].slice(0, 5));
+                setTotalActivities(prev => prev + 1);
+            }
+        };
+
+        const onSprintUpdated = (data: { current_day: number }) => {
+            setSprintDay(data.current_day);
         };
 
         socket.on('stats_update', onStatsUpdate);
         socket.on('level_up', onLevelUp);
         socket.on('new_activity', onNewActivity);
+        socket.on('sprint_updated', onSprintUpdated);
 
         return () => {
             socket.off('stats_update', onStatsUpdate);
             socket.off('level_up', onLevelUp);
             socket.off('new_activity', onNewActivity);
+            socket.off('sprint_updated', onSprintUpdated);
         };
-    }, []);
+    }, [skip]); // Refetch when skip changes
 
     if (loading) return <div className="text-center py-12">Loading...</div>;
 
@@ -198,7 +226,6 @@ export default function Overview() {
                     </div>
                 </div>
 
-                {/* Recent Activity */}
                 <div className="bg-white rounded-2xl p-6 shadow">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold">Recent Activity</h3>
@@ -225,6 +252,29 @@ export default function Overview() {
                             ))
                         )}
                     </ul>
+
+                    {/* Pagination Controls */}
+                    {totalActivities > 5 && (
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
+                            <button
+                                onClick={() => setSkip(prev => Math.max(0, prev - 5))}
+                                disabled={skip === 0}
+                                className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-slate-600"
+                            >
+                                Previous
+                            </button>
+                            <div className="text-xs font-medium text-slate-500">
+                                Page {Math.floor(skip / 5) + 1} of {Math.ceil(totalActivities / 5) || 1}
+                            </div>
+                            <button
+                                onClick={() => setSkip(prev => prev + 5)}
+                                disabled={skip + 5 >= totalActivities}
+                                className="text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-slate-600"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -262,13 +312,42 @@ export default function Overview() {
                 </div>
 
                 {/* Onboarding Info */}
-                <div className="bg-white rounded-2xl p-4 shadow text-sm text-slate-500">
-                    <div className="flex items-center gap-3">
-                        <Calendar className="w-4 h-4" />
-                        <div>
-                            <div className="font-medium text-slate-900">Onboarding</div>
-                            <div className="text-xs">Day 1 — Welcome & orientation</div>
+                <div className="bg-white rounded-2xl p-4 shadow">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${sprintDay >= 7 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-slate-900">Sprint Progress</div>
+                                <div className="text-sm text-slate-500">Day {sprintDay} of 7</div>
+                            </div>
                         </div>
+
+                        {sprintDay >= 7 ? (
+                            <div className="pt-2">
+                                <div className="p-3 bg-green-50 rounded-xl border border-green-100 mb-3">
+                                    <p className="text-xs text-green-700 font-medium">✨ Sprint Complete!</p>
+                                    <p className="text-[10px] text-green-600 mt-1">You've survived the first week. Ready for the next one?</p>
+                                </div>
+                                <button
+                                    onClick={handleResetSprint}
+                                    className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                                >
+                                    Start New Sprint
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="pt-1">
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                        className="bg-blue-500 h-full transition-all duration-500"
+                                        style={{ width: `${(sprintDay / 7) * 100}%` }}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2 text-center">Keep pushing to reach the sprint finish line!</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>

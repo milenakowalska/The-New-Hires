@@ -13,7 +13,7 @@ MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 client = None
 if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1'})
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1beta'})
 
 async def analyze_diff(diff: str, pr_title: str) -> dict:
     if not GEMINI_API_KEY:
@@ -203,13 +203,38 @@ async def transcribe_audio(file_path: str) -> str:
         return "Mock transcription: I worked on the login feature."
         
     try:
+        import time
         # Uploading file to Gemini
-        myfile = client.files.upload(path=file_path)
+        # Determine MIME type
+        mime_type = "audio/webm"
+        if file_path.endswith(".mp3"):
+            mime_type = "audio/mp3"
+        elif file_path.endswith(".wav"):
+            mime_type = "audio/wav"
+            
+        print(f"Transcribing {file_path} with mime_type {mime_type}...")
         
-        result = client.models.generate_content(model=MODEL, contents=[myfile, "Transcribe this audio file accurately."])
+        myfile = client.files.upload(file=file_path, config={'mime_type': mime_type})
+        
+        # Wait for file to be active (required for audio/video)
+        import time
+        for i in range(10): # Max 20 seconds
+            myfile = client.files.get(name=myfile.name)
+            if myfile.state.name == "ACTIVE":
+                break
+            if myfile.state.name == "FAILED":
+                raise Exception(f"File processing failed in Gemini: {myfile.name}")
+            print(f"Waiting for file {myfile.name} to be ACTIVE... current state: {myfile.state.name}")
+            await asyncio.sleep(2)
+        else:
+            raise Exception("Timeout waiting for file to be ACTIVE")
+
+        result = client.models.generate_content(model=MODEL, contents=[myfile, "Transcribe this audio file accurately. Return ONLY the transcription text, nothing else."])
         return result.text
     except Exception as e:
-        print(f"Transcription failed: {e}")
+        import traceback
+        print(f"Transcription failed: {str(e)}")
+        print(traceback.format_exc())
         return "Error transcribing audio."
 
 async def generate_project_with_bugs(project_description: str) -> dict:
@@ -308,3 +333,45 @@ IMPORTANT:
             ]
         }
 
+
+async def verify_standup_truthfulness(transcript: str, ticket_summary: str) -> dict:
+    """
+    Verifies if the standup transcript matches the actual ticket status summary.
+    Returns score (change) and a reasoning message.
+    """
+    if not GEMINI_API_KEY:
+        return {"score": 0, "reason": "AI verification skipped."}
+
+    prompt = f"""
+    You are a Truthfulness Verifier at a tech startup. 
+    Compare the user's DAILY STANDUP TRANSCRIPT with their ACTUAL TICKET STATUS.
+    
+    STANDUP TRANSCRIPT:
+    "{transcript}"
+    
+    ACTUAL TICKET STATUS:
+    {ticket_summary}
+    
+    RULES:
+    1. If the user claims they completed a ticket that is NOT 'DONE', 'IN_TEST' or 'PO_REVIEW', they are lying (-5 points). But if they talk about tasks that are not on the board, it means you cannot verify them, so ignore those information.
+    2. If the user says they are working on something that matches their 'IN_PROGRESS' tickets, they are honest (+2 points).
+    3. If they are vague, stay neutral (0 points).
+    4. If they admit to being stuck, give them a minor honesty boost (+1 point).
+    5. Return a JSON object: {{"score": int, "explanation": "Short reasoning"}}
+    """
+
+    try:
+        response = client.models.generate_content(model=MODEL, contents=prompt)
+        content = response.text
+        # Clean up potential markdown formatting
+        if content.strip().startswith("```json"):
+            content = content.strip()[7:]
+        if content.strip().startswith("```"):
+            content = content.strip()[3:]
+        if content.strip().endswith("```"):
+            content = content.strip()[:-3]
+            
+        return json.loads(content)
+    except Exception as e:
+        print(f"Truthfulness Verification Error: {e}")
+        return {"score": 0, "reason": "Snag in verification."}

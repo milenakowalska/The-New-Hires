@@ -86,6 +86,22 @@ async def create_message(
     # Trigger AI response
     background_tasks.add_task(trigger_ai_response_task, message.channel, message.content)
     
+    # Update Collaboration Stat
+    from .gamification_utils import update_stat
+    await update_stat(current_user, "collaboration", 1)
+    
+    # Track PR submissions in #code-review
+    if message.channel == "code-review" and "github.com" in message.content and "/pull/" in message.content:
+        from .activity import log_activity
+        from models import ActivityType
+        await log_activity(
+            db,
+            current_user.id,
+            ActivityType.PULL_REQUEST_OPENED,
+            f"Shared PR for review: {message.content[:50]}...",
+            {"content": message.content}
+        )
+    
     return db_message
 
 # We will mount this in main.py

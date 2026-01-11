@@ -133,6 +133,16 @@ jobs:
             user.username
         )
 
+        from .activity import log_activity
+        from models import ActivityType
+        await log_activity(
+            db,
+            user.id,
+            ActivityType.REPO_CREATED,
+            f"Created new GitHub repository: {repo_name}",
+            {"repo_name": repo_name, "repo_url": repo_url}
+        )
+
         return {
             "message": f"Repository created with {len(files)} files and {len(created_tickets)} tickets!",
             "repo_url": repo_url,

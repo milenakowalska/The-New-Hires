@@ -14,6 +14,7 @@ class User(Base):
     access_token = Column(String) # Encrypted
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
+    sprint_start_date = Column(DateTime(timezone=True), server_default=func.now())
     
     # Gamification Stats
     truthfulness = Column(Integer, default=50)
@@ -134,8 +135,11 @@ class ActivityType(str, enum.Enum):
     MESSAGE_RECEIVED = "MESSAGE_RECEIVED"
     REPO_CREATED = "REPO_CREATED"
     STANDUP_COMPLETED = "STANDUP_COMPLETED"
+    RETROSPECTIVE_COMPLETED = "RETROSPECTIVE_COMPLETED"
     CODE_REVIEW_SUBMITTED = "CODE_REVIEW_SUBMITTED"
     ACHIEVEMENT_EARNED = "ACHIEVEMENT_EARNED"
+    TICKET_STATUS_CHANGED = "TICKET_STATUS_CHANGED"
+    PULL_REQUEST_OPENED = "PULL_REQUEST_OPENED"
 
 class Activity(Base):
     __tablename__ = "activities"

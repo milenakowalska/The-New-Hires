@@ -8,7 +8,6 @@ from .storage_utils import save_upload_file
 from .ai_utils import generate_coworker_update, generate_voice, transcribe_audio
 from typing import List
 import random
-import random
 import os
 import logging
 
@@ -36,6 +35,16 @@ async def upload_standup(user_id: int, file: UploadFile = File(...), db: AsyncSe
     
     if user:
         await calculate_truthfulness(user, transcript, db)
+        
+        from .activity import log_activity
+        from models import ActivityType
+        await log_activity(
+            db,
+            user_id,
+            ActivityType.STANDUP_COMPLETED,
+            "Completed daily standup",
+            {"transcript": transcript[:100] + "..." if len(transcript) > 100 else transcript}
+        )
         
     await db.commit()
     return {"url": file_url, "transcript": transcript}
@@ -115,6 +124,27 @@ async def upload_retrospective(user_id: int, file: UploadFile = File(...), db: A
     
     retro = Retrospective(user_id=user_id, video_url=file_url, consent_given=True)
     db.add(retro)
+    
+    # Update Stats (Generic boost for retro)
+    from .gamification_utils import update_stat
+    from models import User
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user:
+        await update_stat(user, "collaboration", 5)
+        
+    # Log Activity
+    from .activity import log_activity
+    from models import ActivityType
+    await log_activity(
+        db,
+        user_id,
+        ActivityType.RETROSPECTIVE_COMPLETED,
+        "Completed sprint retrospective",
+        {"video_url": file_url}
+    )
+    
     await db.commit()
     return {"url": file_url}
 
@@ -153,6 +183,19 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     standup_result = await db.execute(standup_stmt)
     standups = standup_result.scalars().all()
     
+    # Calculate current day of sprint (1-7)
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    # Ensure sprint_start_date is aware
+    start_date = user.sprint_start_date
+    if start_date.tzinfo is None:
+        start_date = start_date.replace(tzinfo=timezone.utc)
+        
+    diff = now - start_date
+    sprint_day = diff.days + 1
+    
+    # Cap at 7 for display logic, or let frontend handle "Sprint Complete" state
+    
     return {
         "user": {
             "username": user.username,
@@ -179,6 +222,7 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
             "completed": completed_story_points
         },
         "standups_completed": len(standups),
-        "sprint_days": 7
+        "sprint_days": 7,
+        "current_day": sprint_day
     }
 

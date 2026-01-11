@@ -15,7 +15,7 @@ MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 client = None
 if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1'})
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options={'api_version': 'v1beta'})
 
 
 AI_TEAMMATES = [

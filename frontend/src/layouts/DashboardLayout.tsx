@@ -2,13 +2,29 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 
 import { useState, useEffect } from 'react';
 import socket from '../api/socket';
+import api from '../api/client';
 
 export default function DashboardLayout() {
     const location = useLocation();
     const isActive = (path: string) => location.pathname === path;
     const [hasUnread, setHasUnread] = useState(false);
+    const [sprintDay, setSprintDay] = useState(1);
+
+    const fetchDay = async () => {
+        try {
+            const userJson = localStorage.getItem('user');
+            if (!userJson) return;
+            const userData = JSON.parse(userJson);
+            const res = await api.get(`/features/retrospectives/sprint-stats?user_id=${userData.id}`);
+            setSprintDay(res.data.current_day || 1);
+        } catch (error) {
+            console.error("Failed to fetch sprint day", error);
+        }
+    };
 
     useEffect(() => {
+        fetchDay();
+
         const onNewMessage = () => {
             // Only show dot if we are NOT on the messages page
             if (!location.pathname.startsWith('/messages')) {
@@ -16,10 +32,16 @@ export default function DashboardLayout() {
             }
         };
 
+        const onSprintUpdated = (data: { current_day: number }) => {
+            setSprintDay(data.current_day);
+        };
+
         socket.on('new_message', onNewMessage);
+        socket.on('sprint_updated', onSprintUpdated);
 
         return () => {
             socket.off('new_message', onNewMessage);
+            socket.off('sprint_updated', onSprintUpdated);
         };
     }, [location.pathname]);
 
@@ -54,7 +76,7 @@ export default function DashboardLayout() {
                         <div>
                             <h1 className="text-2xl font-semibold text-slate-900">The New Hire</h1>
                             <p className="text-sm text-slate-500">
-                                Day <span className="font-medium">1</span> of <span className="font-medium">7</span>
+                                Day <span className="font-medium">{sprintDay}</span> of <span className="font-medium">7</span>
                             </p>
                         </div>
 

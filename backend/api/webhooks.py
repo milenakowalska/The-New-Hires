@@ -109,6 +109,16 @@ async def github_webhook(request: Request, background_tasks: BackgroundTasks, db
                 if user and user.access_token:
                     # Run logic in background
                     background_tasks.add_task(process_pr_review, payload, user.access_token)
+                    
+                    from .activity import log_activity
+                    from models import ActivityType
+                    await log_activity(
+                        db,
+                        user.id,
+                        ActivityType.PULL_REQUEST_OPENED,
+                        f"Opened pull request: {payload.get('pull_request', {}).get('title')}",
+                        {"pr_number": payload.get("pull_request", {}).get("number"), "repo": payload.get("repository", {}).get("name")}
+                    )
         elif action == "closed":
             # Update ticket status?
             pass

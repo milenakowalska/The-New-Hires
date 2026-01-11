@@ -7,5 +7,5 @@ node_modules/
 dist/
 .idea/
 .vscode/
-.backend/static/
+backend/static/*.mp3
 ./backend/alembic
