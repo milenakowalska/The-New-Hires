@@ -237,9 +237,9 @@ async def transcribe_audio(file_path: str) -> str:
         print(traceback.format_exc())
         return "Error transcribing audio."
 
-async def generate_project_with_bugs(project_description: str) -> dict:
+async def generate_project_with_bugs(project_description: str, backend_stack: str = "Vanilla JS", frontend_stack: str = "Vanilla JS") -> dict:
     """
-    Generate a beginner-level web project with intentional bugs based on user's description.
+    Generate a professional-grade web project with intentional bugs based on user's description and tech stack.
     Returns files, bugs list, and ticket descriptions.
     """
     if not GEMINI_API_KEY:
@@ -247,6 +247,7 @@ async def generate_project_with_bugs(project_description: str) -> dict:
         return {
             "project_name": "my-web-app",
             "repo_name": "my-web-app-simulation",
+            "is_fallback": True,
             "files": {
                 "index.html": "<!DOCTYPE html><html><head><title>My App</title></head><body><h1>Hello World</h1></body></html>",
                 "styles.css": "body { font-family: sans-serif; }",
@@ -259,44 +260,55 @@ async def generate_project_with_bugs(project_description: str) -> dict:
             ]
         }
     
-    prompt = f"""You are a code generator that creates beginner-level web projects with INTENTIONAL BUGS for training purposes.
-
-User wants to build: {project_description}
-
-Generate a simple HTML/CSS/JavaScript web application with these requirements:
-1. Keep it simple and beginner-friendly (no frameworks, just vanilla HTML/CSS/JS)
-2. Include 8-12 INTENTIONAL BUGS that a new developer would need to fix
-3. Add TODO comments marking missing features
-4. Create corresponding Jira-style tickets for each bug/feature
-
-Return a JSON object with this EXACT structure:
-{{
-    "project_name": "short-project-name",
-    "repo_name": "short-project-name-simulation",
-    "files": {{
-        "index.html": "full HTML content here",
-        "styles.css": "full CSS content here", 
-        "app.js": "full JavaScript content with bugs here",
-        "README.md": "project readme"
-    }},
-    "tickets": [
-        {{
-            "title": "Short ticket title",
-            "description": "Detailed description of what needs to be fixed/implemented",
-            "type": "bug or story or task",
-            "priority": "CRITICAL or HIGH or MEDIUM or LOW",
-            "story_points": 1-5,
-            "day": 1-7
-        }}
-    ]
-}}
-
-IMPORTANT:
-- Make the bugs realistic but fixable by beginners
-- Include comments in the code pointing to bugs like "// BUG: ..." 
-- Spread tickets across 7 days (day 1 = most urgent)
-- Project name should be lowercase with dashes, max 3-4 words
-"""
+    prompt = f"""You are a code generator that creates professional-grade web projects with INTENTIONAL BUGS for training purposes.
+    
+    **Project Goal:** {project_description}
+    **Backend Stack:** {backend_stack}
+    **Frontend Stack:** {frontend_stack}
+    
+    Generate a project that indeed implements (at least, partially) what the goal says. Do NOT just provide a basic structure.
+    
+    **Requirements:**
+    1. **Complexity:** Create a multi-file project with clear separation of concerns.
+    2. **Realism:** Use standard directory structures and best practices for the chosen stacks.
+    3. **Implementation:** Actually implement several core features (e.g., if a weather app, include logic for fetching and displaying data, even if mocked or buggy).
+    4. **CRITICAL: local_run.md (REQUIRED):** You MUST create an additional file named `local_run.md` in the root of the project. This file MUST contain:
+       - PREREQUISITES: Software needed (Node.js, Python, etc.).
+       - SETUP COMMANDS: Commands to install dependencies.
+       - START COMMAND: The command to run the application.
+       - This is where ALL local running instructions MUST reside.
+    5. **MANDATORY: Dependency Management:** You MUST include the appropriate dependency file (e.g., `package.json`, `requirements.txt`, `pom.xml`, etc.).
+    6. **Intentional Bugs:** Include 8-12 realistic, tricky, yet fixable bugs (logic errors, minor syntax issues, configuration mistakes).
+    7. **Jira Tickets:** Create corresponding Jira-style tickets for each bug/feature.
+    
+    **Output Specification:**
+    Return a JSON object with this EXACT structure:
+    {{
+        "project_name": "short-project-name",
+        "repo_name": "short-project-name-simulation",
+        "files": {{
+            "path/to/file1.ext": "full content",
+            "path/to/file2.ext": "full content",
+            ...
+        }},
+        "tickets": [
+            {{
+                "title": "Short ticket title",
+                "description": "Detailed description of what needs to be fixed/implemented",
+                "type": "bug or story or task",
+                "priority": "CRITICAL or HIGH or MEDIUM or LOW",
+                "story_points": 1-5,
+                "day": 1-7
+            }}
+        ]
+    }}
+    
+    **Critical Guidelines:**
+    - Use the correct file extensions and paths for the chosen stacks.
+    - Include comments in the code explaining the intended behavior but marking bugs (e.g., "// BUG: Needs investigation").
+    - Spread tickets across 7 days.
+    - The repository MUST be functional once the bugs are fixed.
+    """
 
     try:
         response = client.models.generate_content(
@@ -313,13 +325,16 @@ IMPORTANT:
         if content.strip().endswith("```"):
             content = content.strip()[:-3]
             
-        return json.loads(content)
+        project_data = json.loads(content)
+        project_data["is_fallback"] = False
+        return project_data
     except Exception as e:
         print(f"Project generation error: {e}")
         # Return fallback on error
         return {
             "project_name": "simple-web-app",
             "repo_name": "simple-web-app-simulation",
+            "is_fallback": True,
             "files": {
                 "index.html": f"<!DOCTYPE html><html><head><title>{project_description}</title></head><body><h1>{project_description}</h1><p>TODO: Build this app</p></body></html>",
                 "styles.css": "/* TODO: Add styles */\nbody { font-family: sans-serif; padding: 20px; }",

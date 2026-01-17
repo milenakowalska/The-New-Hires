@@ -136,7 +136,7 @@ alembic upgrade head
 Backend:
 
 ```bash
-python app.py
+uvicorn main:app --reload
 ```
 
 #### Frontend:

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Enum, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Enum, Text, JSON
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.sql import func
 import enum
 from database import Base
@@ -15,6 +16,7 @@ class User(Base):
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
     sprint_start_date = Column(DateTime(timezone=True), server_default=func.now())
+    onboarding_completed_tasks = Column(MutableList.as_mutable(JSON), default=[])
     
     # Gamification Stats
     truthfulness = Column(Integer, default=50)
