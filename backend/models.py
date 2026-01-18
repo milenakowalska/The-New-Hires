@@ -18,6 +18,10 @@ class User(Base):
     sprint_start_date = Column(DateTime(timezone=True), server_default=func.now())
     onboarding_completed_tasks = Column(MutableList.as_mutable(JSON), default=[])
     
+    # RAG Indexing Metadata
+    repo_full_name = Column(String, nullable=True) # e.g. "username/repo"
+    last_indexed_commit = Column(String, nullable=True)
+    
     # Gamification Stats
     truthfulness = Column(Integer, default=50)
     effort = Column(Integer, default=50)

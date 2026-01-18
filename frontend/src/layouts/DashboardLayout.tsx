@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import socket from '../api/socket';
 import api from '../api/client';
+import SeniorColleagueChat from '../components/SeniorColleagueChat';
 
 export default function DashboardLayout() {
     const location = useLocation();
@@ -114,6 +115,9 @@ export default function DashboardLayout() {
             <main className="max-w-7xl mx-auto px-6 py-6">
                 <Outlet />
             </main>
+
+            {/* AI Senior Colleague Chat Widget */}
+            <SeniorColleagueChat />
         </div>
     );
 }

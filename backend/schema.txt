@@ -10,3 +10,7 @@ effort - INTEGER
 reliability - INTEGER
 collaboration - INTEGER
 quality - INTEGER
+sprint_start_date - TIMESTAMP
+onboarding_completed_tasks - JSON
+repo_full_name - VARCHAR
+last_indexed_commit - VARCHAR

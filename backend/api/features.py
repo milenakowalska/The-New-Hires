@@ -6,7 +6,8 @@ from models import StandupSession, Retrospective, User
 from .gamification_utils import calculate_truthfulness
 from .storage_utils import save_upload_file
 from .ai_utils import generate_coworker_update, generate_voice, transcribe_audio
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 import random
 import os
 import logging
@@ -188,6 +189,9 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc)
     # Ensure sprint_start_date is aware
     start_date = user.sprint_start_date
+    if not start_date:
+        start_date = now
+        
     if start_date.tzinfo is None:
         start_date = start_date.replace(tzinfo=timezone.utc)
         
@@ -296,6 +300,39 @@ async def get_sprint_review_history(user_id: int, db: AsyncSession = Depends(get
                 continue
     
     return history
+
+class SeniorColleagueChatRequest(BaseModel):
+    message: str
+
+@router.post("/senior-colleague/chat")
+async def chat_with_senior_colleague(user_id: int, request: SeniorColleagueChatRequest, db: AsyncSession = Depends(get_db)):
+    from models import User
+    from .rag_utils import rag_engine
+    
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user or not user.repo_full_name:
+        return {"response": "I don't see a repository linked to your account. Have you completed onboarding yet?"}
+        
+    response = await rag_engine.query(user_id, user.repo_full_name, request.message)
+    return {"response": response}
+
+@router.post("/senior-colleague/sync")
+async def sync_senior_colleague(user_id: int, db: AsyncSession = Depends(get_db)):
+    from models import User
+    from .rag_utils import rag_engine
+    
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user or not user.repo_full_name or not user.access_token:
+         return {"success": False, "message": "Missing repository or access token"}
+         
+    success = await rag_engine.sync_with_github(user_id, user.repo_full_name, user.access_token, db)
+    return {"success": success}
 
 import time
 

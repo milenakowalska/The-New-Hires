@@ -66,6 +66,11 @@ async def generate_repository(request: RepoRequest, user_id: int, background_tas
             
         data = response.json()
         repo_url = data["html_url"]
+        repo_full_name = f"{user.username}/{repo_name}"
+        
+        # Save repo info to user
+        user.repo_full_name = repo_full_name
+        await db.commit()
         
         # Helper function to push file to GitHub
         async def push_file(path: str, content: str, message: str):
@@ -139,6 +144,15 @@ jobs:
             user.username
         )
 
+        # Trigger RAG indexing in background
+        from .rag_utils import rag_engine
+        background_tasks.add_task(
+            rag_engine.index_files,
+            user.id,
+            repo_full_name,
+            files
+        )
+
         from .activity import log_activity
         from models import ActivityType
         await log_activity(
@@ -152,6 +166,7 @@ jobs:
         # Reset onboarding checklist for the new project
         user.onboarding_completed_tasks = []
         user.onboarding_completed_tasks = list(user.onboarding_completed_tasks) # Force detection
+        await db.commit()
 
         return {
             "message": f"Repository created with {len(files)} files and {len(created_tickets)} tickets!",
