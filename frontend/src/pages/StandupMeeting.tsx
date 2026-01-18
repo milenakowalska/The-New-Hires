@@ -9,6 +9,7 @@ export default function StandupMeeting() {
     const [transcript, setTranscript] = useState('');
     const [coworkerRound, setCoworkerRound] = useState(0);
     const [audioError, setAudioError] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     const audioRef = useRef<HTMLAudioElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -82,6 +83,7 @@ export default function StandupMeeting() {
     };
 
     const uploadStandup = async (blob: Blob) => {
+        setIsUploading(true);
         const formData = new FormData();
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         formData.append('file', blob, 'standup.webm');
@@ -92,6 +94,8 @@ export default function StandupMeeting() {
             setStep('done');
         } catch (error) {
             console.error("Upload failed", error);
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -157,19 +161,30 @@ export default function StandupMeeting() {
             {step === 'user' && (
                 <div className="space-y-8">
                     <div className="w-32 h-32 rounded-full bg-gray-800 border-4 border-gray-700 flex items-center justify-center mx-auto relative overflow-hidden">
-                        {isRecording && <div className="absolute inset-0 bg-red-500/20 animate-ping rounded-full"></div>}
+                        {(isRecording || isUploading) && (
+                            <div className={`absolute inset-0 ${isUploading ? 'bg-blue-500/20 animate-pulse' : 'bg-red-500/20 animate-ping'} rounded-full`}></div>
+                        )}
                         <div className="z-10 bg-gray-900 rounded-full p-4">
-                            <Mic className={`w-12 h-12 ${isRecording ? 'text-red-500' : 'text-gray-400'}`} />
+                            {isUploading ? (
+                                <Loader className="w-12 h-12 text-blue-500 animate-spin" />
+                            ) : (
+                                <Mic className={`w-12 h-12 ${isRecording ? 'text-red-500' : 'text-gray-400'}`} />
+                            )}
                         </div>
                     </div>
 
-                    <h2 className="text-2xl font-bold text-white">Your Turn</h2>
-                    <p className="text-gray-400">Tell us what you did yesterday and what you're doing today.</p>
+                    <h2 className="text-2xl font-bold text-white">
+                        {isUploading ? 'Processing Voice...' : 'Your Turn'}
+                    </h2>
+                    <p className="text-gray-400">
+                        {isUploading ? 'Gemini is transcribing your update...' : 'Tell us what you did yesterday and what you\'re doing today.'}
+                    </p>
 
                     {!isRecording ? (
                         <button
+                            disabled={isUploading}
                             onClick={startRecording}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto space-x-2 transition-all"
+                            className={`bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto space-x-2 transition-all`}
                         >
                             <Mic className="w-6 h-6" />
                             <span>Start Speaking</span>

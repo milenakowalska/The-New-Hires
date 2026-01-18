@@ -58,6 +58,7 @@ export default function DashboardLayout() {
         { path: '/sprint', label: 'Sprint Board' },
         { path: '/standup', label: 'Standup Meeting' },
         { path: '/retrospective', label: 'Retrospective' },
+        { path: '/sprint-review', label: 'Sprint Review' },
         { path: '/messages', label: 'Messages' },
     ];
 

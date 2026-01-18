@@ -18,9 +18,11 @@ export default function Messages() {
     const { channel = 'general' } = useParams();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
+    const isInitialLoad = useRef(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        isInitialLoad.current = true;
         const fetchMessages = async () => {
             try {
                 const res = await api.get(`/messages/${channel}`);
@@ -67,12 +69,19 @@ export default function Messages() {
         };
     }, [channel]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
     };
 
     useEffect(() => {
-        scrollToBottom();
+        if (messages.length > 0) {
+            if (isInitialLoad.current) {
+                scrollToBottom("auto");
+                isInitialLoad.current = false;
+            } else {
+                scrollToBottom("smooth");
+            }
+        }
     }, [messages]);
 
 

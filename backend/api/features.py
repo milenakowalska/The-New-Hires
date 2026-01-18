@@ -191,7 +191,8 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     if start_date.tzinfo is None:
         start_date = start_date.replace(tzinfo=timezone.utc)
         
-    diff = now - start_date
+    # Calculate days difference based on date (calendar days)
+    diff = now.date() - start_date.date()
     sprint_day = diff.days + 1
     
     # Cap at 7 for display logic, or let frontend handle "Sprint Complete" state
@@ -225,4 +226,76 @@ async def get_sprint_stats(user_id: int, db: AsyncSession = Depends(get_db)):
         "sprint_days": 7,
         "current_day": sprint_day
     }
+
+from .ai_utils import analyze_video
+
+@router.post("/sprint-review/analyze")
+async def analyze_sprint_review(user_id: int, duration: str = None, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    # Extract extension
+    ext = os.path.splitext(file.filename)[1].lower() or ".mp4"
+    if ext not in [".mp4", ".mov", ".webm"]:
+        # Fallback to .mp4 if unknown, though frontend filters this
+        pass
+
+    # Upload to local storage temporarily
+    filename = f"sprint_review_{user_id}_{int(time.time())}{ext}"
+    file_url = save_upload_file(file, filename)
+    
+    # Absolute path for Gemini upload
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(current_dir)
+    file_path = os.path.join(backend_dir, "static", filename)
+    
+    try:
+        # Analyze video
+        report = await analyze_video(file_path, duration)
+        
+        # Log Activity
+        from .activity import log_activity
+        from models import ActivityType
+        await log_activity(
+            db,
+            user_id,
+            ActivityType.RETROSPECTIVE_COMPLETED,
+            "Completed sprint review video analysis",
+            {"report": report}
+        )
+        await db.commit()
+        
+        return {"report": report}
+    finally:
+        # Cleanup: delete the file after analysis as requested
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+@router.get("/sprint-review/history")
+async def get_sprint_review_history(user_id: int, db: AsyncSession = Depends(get_db)):
+    from models import Activity, ActivityType
+    from sqlalchemy import desc
+    import json
+    
+    stmt = select(Activity).where(
+        Activity.user_id == user_id,
+        Activity.activity_type == ActivityType.RETROSPECTIVE_COMPLETED
+    ).order_by(desc(Activity.created_at))
+    
+    result = await db.execute(stmt)
+    activities = result.scalars().all()
+    
+    history = []
+    for activity in activities:
+        if activity.extra_data:
+            try:
+                data = json.loads(activity.extra_data)
+                if "report" in data:
+                    history.append({
+                        "date": activity.created_at.isoformat(),
+                        "report": data["report"]
+                    })
+            except:
+                continue
+    
+    return history
+
+import time
 

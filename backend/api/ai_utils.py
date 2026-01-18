@@ -390,3 +390,59 @@ async def verify_standup_truthfulness(transcript: str, ticket_summary: str) -> d
     except Exception as e:
         print(f"Truthfulness Verification Error: {e}")
         return {"score": 0, "reason": "Snag in verification."}
+
+async def analyze_video(file_path: str, duration: str = None) -> str:
+    if not GEMINI_API_KEY:
+        return "user uploaded sprint review, duration 0:00, AI analysis skipped - API Key missing"
+        
+    try:
+        # Detect MIME type based on extension
+        mime_type = "video/mp4" # Default
+        if file_path.lower().endswith(".mov"):
+            mime_type = "video/quicktime"
+        elif file_path.lower().endswith(".webm"):
+            mime_type = "video/webm"
+            
+        print(f"Uploading video {file_path} (mime: {mime_type}) to Gemini...")
+        myfile = client.files.upload(file=file_path, config={'mime_type': mime_type})
+        
+        # Wait for file to be active
+        for i in range(20): # Max 40 seconds for video
+            myfile = client.files.get(name=myfile.name)
+            if myfile.state.name == "ACTIVE":
+                break
+            if myfile.state.name == "FAILED":
+                raise Exception(f"Video processing failed in Gemini: {myfile.name}")
+            print(f"Waiting for video {myfile.name} to be ACTIVE... current state: {myfile.state.name}")
+            await asyncio.sleep(2)
+        else:
+            raise Exception("Timeout waiting for video to be ACTIVE")
+
+        duration_instruction = f"The duration of the video is {duration}. Use this value exactly." if duration else "Carefully observe the video playback/timeline to provide the most accurate duration possible."
+
+        prompt = f"""
+        You are a highly efficient assistant. Analyze the provided sprint review video.
+        
+        CRITICAL INSTRUCTIONS:
+        1. Return ONLY the final summary sentence. 
+        2. DO NOT include any introductory text, prefix, or conversational filler (e.g., "Okay", "Here is", "Sure").
+        3. DO NOT use square brackets [] or parentheses () for any values.
+        
+        EXACT FORMAT REQUIRED:
+        user uploaded sprint review, duration M:SS, user presented the feature FEATURE_NAME and explained TECHNICAL_ASPECT
+        
+        Note: {duration_instruction}
+        """
+        
+        result = client.models.generate_content(model=MODEL, contents=[myfile, prompt])
+        
+        # Clean up the file from Gemini after analysis
+        try:
+            client.files.delete(name=myfile.name)
+        except:
+            pass
+            
+        return result.text.strip()
+    except Exception as e:
+        print(f"Video analysis failed: {str(e)}")
+        return f"user uploaded sprint review, error: {str(e)}"

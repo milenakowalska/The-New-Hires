@@ -7,6 +7,7 @@ import SprintBoard from './pages/SprintBoard';
 import Messages from './pages/Messages';
 import StandupMeeting from './pages/StandupMeeting';
 import Retrospective from './pages/Retrospective';
+import SprintReview from './pages/SprintReview';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="sprint" element={<SprintBoard />} />
             <Route path="standup" element={<StandupMeeting />} />
             <Route path="retrospective" element={<Retrospective />} />
+            <Route path="sprint-review" element={<SprintReview />} />
             <Route path="messages" element={<Messages />} />
             <Route path="messages/:channel" element={<Messages />} />
           </Route>

@@ -68,16 +68,29 @@ async def trigger_ai_response_task(channel: str, user_message: str):
     
     try:
         async with AsyncSessionLocal() as db:
-            # Pick a teammate
+            # Picking a teammate early if needed for immediate feedback
             teammate = random.choice(AI_TEAMMATES)
             user = await get_or_create_ai_user(db, teammate)
-            
+
             # SPECIAL HANDLING FOR CODE REVIEW
             content = None
             
             if channel == "code-review":
                 if "github.com" in user_message and "/pull/" in user_message:
-                    # Extract URL (simple extraction)
+                    # Emit immediate feedback from THE SAME USER
+                    immediate_data = {
+                        "id": random.randint(100000, 999999), # Temporary ID
+                        "channel": channel,
+                        "content": f"Thanks! Give me a minute, I'll take a look at this PR for you. 🔍",
+                        "sender_id": user.id,
+                        "is_bot": True,
+                        "timestamp": datetime.now().isoformat(),
+                        "sender_name": user.username,
+                        "sender_avatar": user.avatar_url
+                    }
+                    await sio.emit("new_message", immediate_data)
+                    
+                    # Extract URL and process
                     words = user_message.split()
                     for word in words:
                         if "github.com" in word and "/pull/" in word:
@@ -107,6 +120,7 @@ async def trigger_ai_response_task(channel: str, user_message: str):
                 Respond to them. Keep it short (1-2 sentences).
                 """
                 
+                # In a real environment, this might take time, so we already sent the "thanks" for PRs
                 response = client.models.generate_content(model=MODEL, contents=prompt)
                 content = response.text
             
