@@ -104,7 +104,7 @@ export default function StandupMeeting() {
             {step === 'waiting' && (
                 <div className="space-y-6">
                     <h1 className="text-3xl font-bold text-white">Morning Standup</h1>
-                    <p className="text-gray-400">Join the daily meeting with your AI coworkers.</p>
+                    <p className="text-gray-300">Join the daily meeting with your AI coworkers.</p>
                     <button
                         onClick={startMeeting}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform hover:scale-105"
@@ -154,7 +154,7 @@ export default function StandupMeeting() {
             {step === 'coworker' && !coworker && (
                 <div className="flex flex-col items-center justify-center space-y-4">
                     <Loader className="w-10 h-10 text-blue-500 animate-spin" />
-                    <p className="text-gray-400">Waiting for next speaker...</p>
+                    <p className="text-gray-300">Waiting for next speaker...</p>
                 </div>
             )}
 
@@ -176,7 +176,7 @@ export default function StandupMeeting() {
                     <h2 className="text-2xl font-bold text-white">
                         {isUploading ? 'Processing Voice...' : 'Your Turn'}
                     </h2>
-                    <p className="text-gray-400">
+                    <p className="text-gray-300">
                         {isUploading ? 'Gemini is transcribing your update...' : 'Tell us what you did yesterday and what you\'re doing today.'}
                     </p>
 
@@ -208,7 +208,7 @@ export default function StandupMeeting() {
                     </div>
                     <h2 className="text-2xl font-bold text-white">Standup Completed!</h2>
                     <div className="bg-gray-800 p-6 rounded-xl max-w-lg mx-auto text-left">
-                        <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Transcript Analysis</h3>
+                        <h3 className="text-sm font-bold text-gray-400 uppercase mb-2">Transcript Analysis</h3>
                         <p className="text-gray-300">{transcript}</p>
                     </div>
                     <p className="text-blue-400">Truthfulness Score Updated.</p>

@@ -89,7 +89,7 @@ export default function Retrospective() {
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
                             Sprint Retrospective
                         </h1>
-                        <p className="text-gray-400 mt-2">Review your {stats.sprint_days}-day sprint performance</p>
+                        <p className="text-gray-300 mt-2">Review your {stats.sprint_days}-day sprint performance</p>
                     </div>
 
                     {/* User Card */}
@@ -108,7 +108,7 @@ export default function Retrospective() {
                             </div>
                             <div className="ml-auto text-right">
                                 <div className="text-3xl font-bold text-white">{stats.tickets.completion_rate}%</div>
-                                <div className="text-sm text-gray-400">Sprint Completion</div>
+                                <div className="text-sm text-gray-300">Sprint Completion</div>
                             </div>
                         </div>
                     </div>
@@ -188,7 +188,7 @@ export default function Retrospective() {
                 <div className="space-y-8 max-w-2xl mx-auto animate-fade-in">
                     <div className="text-center mb-8">
                         <h1 className="text-3xl font-bold text-white">Sprint Feedback</h1>
-                        <p className="text-gray-400 mt-2">Reflect on your sprint experience</p>
+                        <p className="text-gray-300 mt-2">Reflect on your sprint experience</p>
                     </div>
 
                     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -245,7 +245,7 @@ export default function Retrospective() {
                         <p className="text-2xl text-gray-300">Great job on completing your sprint.</p>
                     </div>
                     <div className="bg-gray-800/50 p-8 rounded-2xl border border-gray-700">
-                        <p className="text-gray-400 leading-relaxed">
+                        <p className="text-gray-300 leading-relaxed">
                             You've completed the sprint retrospective. Your feedback has been recorded.
                             Keep pushing code, stay reliable, and continue leveling up!
                         </p>

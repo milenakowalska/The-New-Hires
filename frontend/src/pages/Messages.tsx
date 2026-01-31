@@ -133,7 +133,7 @@ export default function Messages() {
             <div className="flex-1 flex flex-col">
                 <div className="p-4 border-b border-gray-700 bg-gray-900 shadow-sm z-10">
                     <h3 className="font-bold text-white flex items-center">
-                        <Hash className="w-5 h-5 mr-2 text-gray-500" />
+                        <Hash className="w-5 h-5 mr-2 text-gray-400" />
                         {channel}
                     </h3>
                 </div>
@@ -151,7 +151,7 @@ export default function Messages() {
                             <div className="flex-1">
                                 <div className="flex items-baseline">
                                     <span className="font-medium text-white mr-2">{msg.sender_name}</span>
-                                    <span className="text-xs text-gray-500">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="text-xs text-gray-400">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                                 <p className="text-gray-300 text-sm mt-0.5">{msg.content}</p>
                             </div>

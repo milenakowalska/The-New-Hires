@@ -122,7 +122,7 @@ export default function SprintBoard() {
                                                                     ME
                                                                 </div>
                                                             </div>
-                                                            <span className="text-xs text-gray-500">#{ticket.id}</span>
+                                                            <span className="text-xs text-gray-400">#{ticket.id}</span>
                                                         </div>
                                                     </div>
                                                 )}
