@@ -83,16 +83,15 @@ CREATE DATABASE the_new_hire;
 3. **Configure environment variables**
 
 Create a `.env` file in the root directory:
-
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost/the_new_hire
-GOOGLE_AI_API_KEY=your_google_ai_key
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/the_new_hire
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.0-flash
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
+SYSTEM_GITHUB_TOKEN=your_personal_access_token_classic_with_repo_scope
+SYSTEM_GITHUB_USERNAME=your_github_username
+JWT_SECRET=your_jwt_secret
+BASE_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:5173
 ```
 
 4. **Install backend dependencies**
@@ -167,7 +166,7 @@ npm test
 
 ## Usage
 
-1. **Sign up/Login** using GitHub OAuth
+1. **Sign up/Login** using username and password (standard auth)
 2. **Start your onboarding journey** by selecting a simulated role
 3. **Complete daily tasks** and checklists
 4. **Attend mock meetings** with AI-generated teammates

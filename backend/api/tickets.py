@@ -44,9 +44,12 @@ class TicketOut(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+from .auth_utils import get_current_user
+
 @router.get("/", response_model=List[TicketOut])
-async def get_tickets(db: AsyncSession = Depends(get_db)):
-    stmt = select(Ticket)
+async def get_tickets(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # Filter tickets by current logged in user
+    stmt = select(Ticket).where(Ticket.assignee_id == current_user.id)
     result = await db.execute(stmt)
     return result.scalars().all()
 

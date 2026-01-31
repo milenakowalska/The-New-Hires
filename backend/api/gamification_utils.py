@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import User
-from .messages import sio # Import the socket server
+from .socket_instance import sio # Import the socket server
 
 async def award_xp(user: User, amount: int):
     """Directly awards XP and checks for level up."""
