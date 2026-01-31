@@ -14,6 +14,7 @@ class RepoRequest(BaseModel):
     repo_name: Optional[str] = None  # Auto-generated if not provided
     backend_stack: str = "Vanilla JS"
     frontend_stack: str = "Vanilla JS"
+    github_username: Optional[str] = None
 
 @router.post("/generate-repo")
 async def generate_repository(request: RepoRequest, user_id: int, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
@@ -176,6 +177,46 @@ jobs:
 """
             await push_file(".github/workflows/ci.yml", ci_content, "Add CI/CD workflow")
         
+            # Invite User as Collaborator if username provided
+            if request.github_username:
+                # Sanitize username (remove @ and whitespace)
+                clean_username = request.github_username.strip().lstrip("@")
+                print(f"DEBUG: Attempting to invite '{clean_username}' (raw: '{request.github_username}')")
+                
+                # Check if we are in simulation mode
+                if repo_full_name.startswith("simulation/"):
+                     print("DEBUG: Skipping invite because repo is in simulation mode.")
+                     invite_result = "skipped_simulation"
+                else:
+                    try:
+                        # Use the owner from the repo full name
+                        owner = repo_full_name.split("/")[0]
+                        invite_url = f"https://api.github.com/repos/{owner}/{repo_name}/collaborators/{clean_username}"
+                        print(f"DEBUG: Invite URL: {invite_url}")
+                        
+                        invite_resp = await client.put(
+                            invite_url,
+                            headers={
+                                "Authorization": f"token {token_to_use}",
+                                "Accept": "application/vnd.github.v3+json"
+                            },
+                            json={"permission": "push"} 
+                        )
+                        
+                        print(f"DEBUG: Invite Response Code: {invite_resp.status_code}")
+                        print(f"DEBUG: Invite Response Text: {invite_resp.text}")
+
+                        if invite_resp.status_code in [201, 204]:
+                            print(f"DEBUG: Successfully invited {clean_username}")
+                            invite_result = "success"
+                        else:
+                            invite_result = f"failed: {invite_resp.status_code}"
+                    except Exception as e:
+                        print(f"DEBUG: Error inviting collaborator: {e}")
+                        invite_result = f"error: {str(e)}"
+            else:
+                 invite_result = "skipped"
+
         # Create tickets from AI-generated list
         now = datetime.now()
         tickets_data = project.get("tickets", [])
@@ -241,7 +282,9 @@ jobs:
             "repo_url": repo_url,
             "project_name": project.get("project_name"),
             "tickets_created": len(created_tickets),
-            "is_fallback": project.get("is_fallback", False)
+            "is_fallback": project.get("is_fallback", False),
+            "invite_status": invite_result,
+            "github_username": request.github_username
         }
 
 @router.get("/checklist")
