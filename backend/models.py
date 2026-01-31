@@ -9,10 +9,15 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    github_id = Column(String, unique=True, index=True)
     username = Column(String, unique=True, index=True)
-    avatar_url = Column(String)
-    access_token = Column(String) # Encrypted
+    hashed_password = Column(String)
+    avatar_url = Column(String, nullable=True)
+    
+    # GitHub Integration (Removed for Standard Auth)
+    # github_id = Column(String, unique=True, index=True, nullable=True)
+    # access_token = Column(String, nullable=True) 
+
+    
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
     sprint_start_date = Column(DateTime(timezone=True), server_default=func.now())

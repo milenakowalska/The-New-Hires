@@ -37,18 +37,20 @@ CONVERSATION_STARTERS = [
 ]
 
 async def get_or_create_ai_user(db, teammate):
-    stmt = select(User).where(User.github_id == teammate["github_id"])
+    # Lookup by username since github_id is removed
+    stmt = select(User).where(User.username == teammate["name"])
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
     
     if not user:
+        # Create AI user if not exists
         user = User(
-            github_id=teammate["github_id"],
             username=teammate["name"],
             avatar_url=teammate["avatar_url"],
-            access_token="ai_token",
+            # No github_id or access_token needed for AI in new schema
             xp=1000,
-            level=10
+            level=10,
+            hashed_password="AI_BOT_NO_LOGIN" # Placeholder
         )
         db.add(user)
         await db.commit()
@@ -57,6 +59,7 @@ async def get_or_create_ai_user(db, teammate):
     return user
 
 async def trigger_ai_response_task(channel: str, user_message: str):
+    print(f"DEBUG AI: Triggered for channel={channel}, message='{user_message}'")
     # Random delay 2-5s
     await asyncio.sleep(random.randint(2, 5))
     
@@ -146,9 +149,12 @@ async def trigger_ai_response_task(channel: str, user_message: str):
             }
             
             await sio.emit("new_message", data)
+            print(f"DEBUG AI: Sent response: {data['content'][:50]}...")
             
     except Exception as e:
         print(f"Error in AI response: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def trigger_proactive_message(channel: str, prompt_context: str, user_name: str = "Teammate"):
     """Trigger an AI message without a user prompt (proactive)"""

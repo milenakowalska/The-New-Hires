@@ -260,54 +260,38 @@ async def generate_project_with_bugs(project_description: str, backend_stack: st
             ]
         }
     
-    prompt = f"""You are a code generator that creates professional-grade web projects with INTENTIONAL BUGS for training purposes.
-    
-    **Project Goal:** {project_description}
-    **Backend Stack:** {backend_stack}
-    **Frontend Stack:** {frontend_stack}
-    
-    Generate a project that indeed implements (at least, partially) what the goal says. Do NOT just provide a basic structure.
-    
-    **Requirements:**
-    1. **Complexity:** Create a multi-file project with clear separation of concerns.
-    2. **Realism:** Use standard directory structures and best practices for the chosen stacks.
-    3. **Implementation:** Actually implement several core features (e.g., if a weather app, include logic for fetching and displaying data, even if mocked or buggy).
-    4. **CRITICAL: local_run.md (REQUIRED):** You MUST create an additional file named `local_run.md` in the root of the project. This file MUST contain:
-       - PREREQUISITES: Software needed (Node.js, Python, etc.).
-       - SETUP COMMANDS: Commands to install dependencies.
-       - START COMMAND: The command to run the application.
-       - This is where ALL local running instructions MUST reside.
-    5. **MANDATORY: Dependency Management:** You MUST include the appropriate dependency file (e.g., `package.json`, `requirements.txt`, `pom.xml`, etc.).
-    6. **Intentional Bugs:** Include 8-12 realistic, tricky, yet fixable bugs (logic errors, minor syntax issues, configuration mistakes).
-    7. **Jira Tickets:** Create corresponding Jira-style tickets for each bug/feature.
-    
-    **Output Specification:**
-    Return a JSON object with this EXACT structure:
+    prompt = f"""
+    **Input:**
+    - Project Goal: {project_description}
+    - Backend: {backend_stack}
+    - Frontend: {frontend_stack}
+
+    **CRITICAL REQUIREMENTS:**
+    1. **Full Project Structure:** You MUST generate a complete, working folder structure.
+       - If React, include `src/App.jsx`, `src/index.jsx`, `package.json`, `public/index.html`.
+       - If Python, include `app.py`, `requirements.txt`.
+       - If Java, include `src/main/java/Main.java`, `pom.xml`.
+    2. **File Content:** Provide FULL, WORKING code for every file. Do not use placeholders like "// code here".
+    3. **Standard Files:** Always include:
+       - `README.md` (Detailed)
+       - `local_run.md` (Instructions to run locally)
+       - dependency file (package.json / requirements.txt)
+    4. **Intentional Bugs:** Include 5-8 bugs that are subtle but break functionality (e.g., wrong API endpoint, missing await, off-by-one error).
+    5. **Ticket Generation:** Create tickets that correspond to these features and bugs.
+
+    **Output Format (JSON):**
     {{
-        "project_name": "short-project-name",
-        "repo_name": "short-project-name-simulation",
+        "project_name": "name",
+        "repo_name": "name-simulation",
         "files": {{
-            "path/to/file1.ext": "full content",
-            "path/to/file2.ext": "full content",
-            ...
+            "README.md": "...",
+            "local_run.md": "...",
+            "package.json": "...",
+            "src/App.jsx": "...",
+            "src/components/Header.jsx": "..."
         }},
-        "tickets": [
-            {{
-                "title": "Short ticket title",
-                "description": "Detailed description of what needs to be fixed/implemented",
-                "type": "bug or story or task",
-                "priority": "CRITICAL or HIGH or MEDIUM or LOW",
-                "story_points": 1-5,
-                "day": 1-7
-            }}
-        ]
+        "tickets": [...]
     }}
-    
-    **Critical Guidelines:**
-    - Use the correct file extensions and paths for the chosen stacks.
-    - Include comments in the code explaining the intended behavior but marking bugs (e.g., "// BUG: Needs investigation").
-    - Spread tickets across 7 days.
-    - The repository MUST be functional once the bugs are fixed.
     """
 
     try:
